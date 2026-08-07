@@ -271,6 +271,18 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
 .ask-box{background:var(--white);border-radius:22px;padding:26px 26px 20px;max-width:380px;width:100%;box-shadow:0 20px 50px rgba(46,42,44,.3)}
 .ask-t{margin:0;font-family:var(--display);font-size:20px;line-height:1.25}
 .ask-s{margin:8px 0 0;font-size:14px;color:var(--ink-2)}
+.lgl{display:block;margin:14px 0 5px;font-size:12px;font-weight:700;color:var(--ink-2)}
+#loginEmail,#loginPass{width:100%;font-size:16px;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--white);color:var(--ink);font-family:var(--body)}
+.lgerr{margin:14px 0 0;padding:10px 13px;border-radius:11px;background:var(--tint-out,#FDECF0);color:var(--out-deep);font-size:13.5px}
+#loginGo{background:var(--in-deep);color:#fff}
+#loginGo:hover{filter:brightness(1.08)}
+#loginCancel{background:var(--paper);color:var(--ink)}
+.tool.sync{display:inline-flex;align-items:center;gap:7px;font-size:13px}
+.tool.sync::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--in);flex:none}
+.tool.sync.busy::before{background:var(--gold);animation:pulse 1s ease-in-out infinite}
+.tool.sync.off::before{background:var(--ink-2);opacity:.4}
+.tool.sync.err::before{background:var(--out-deep)}
+@keyframes pulse{50%{opacity:.35}}
 #askInput{width:100%;margin-top:16px;font-family:var(--mono);font-weight:600;font-size:18px;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--white);color:var(--ink)}
 #askInput[hidden]{display:none}
 .ask-btns{display:flex;gap:10px;justify-content:flex-start;margin-top:22px}
@@ -331,11 +343,13 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
       <h1 id="bizName" contenteditable="true" spellcheck="false">העסק שלי</h1>
     </div>
     <div class="tools">
+      <button class="tool sync" id="btnSync" hidden></button>
       <button class="tool icon" id="btnMore" aria-label="הגדרות וקבצים" aria-expanded="false" aria-controls="toolMenu">
         <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M1 1h16M1 7h16M1 13h16"/></svg>
       </button>
       <div class="menu" id="toolMenu" hidden>
         <button id="btnCsv">ייצוא לאקסל<small>רישומי התקופה, לצפייה או לרואה חשבון</small></button>
+        <button id="btnLogin">סנכרון בין מכשירים<small>התחברות, כדי שהמחשב והטלפון יראו אותו דבר</small></button>
         <button id="btnClone">העתקה למחשב אחר<small>קובץ אחד שכולל את האפליקציה ואת כל הרישומים</small></button>
         <button id="btnBackup">גיבוי לקובץ<small>עותק של הכל, כולל הקבלות</small></button>
         <button id="btnRestore">שחזור מגיבוי<small>טעינת קובץ גיבוי במקום מה שרשום עכשיו</small></button>
@@ -458,6 +472,22 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
   </div>
 </div>
 
+<div class="ask" id="login" hidden>
+  <div class="ask-box" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+    <p class="ask-t" id="loginTitle">סנכרון בין מכשירים</p>
+    <p class="ask-s">התחברות פעם אחת בכל מכשיר, ומשם הרישומים מתעדכנים לבד בכולם.</p>
+    <label class="lgl" for="loginEmail">אימייל</label>
+    <input type="email" id="loginEmail" autocomplete="username" inputmode="email">
+    <label class="lgl" for="loginPass">סיסמה</label>
+    <input type="password" id="loginPass" autocomplete="current-password">
+    <p class="lgerr" id="loginErr" hidden></p>
+    <div class="ask-btns">
+      <button type="button" id="loginCancel">ביטול</button>
+      <button type="button" id="loginGo">התחברות</button>
+    </div>
+  </div>
+</div>
+
 <div class="ask" id="ask" hidden>
   <div class="ask-box" role="alertdialog" aria-modal="true" aria-labelledby="askTitle">
     <p class="ask-t" id="askTitle"></p>
@@ -497,7 +527,11 @@ function load(){
   return {name:"העסק שלי", opening:0, items:[], budget:{base:"auto", cats:{}}};
 }
 function save(){
-  try{ localStorage.setItem(KEY, JSON.stringify(db)); return true; }
+  try{
+    localStorage.setItem(KEY, JSON.stringify(db));
+    queueSync();
+    return true;
+  }
   catch(e){ toast("הזיכרון של הדפדפן מלא. ייצאי גיבוי ומחקי קבלות ישנות."); return false; }
 }
 
@@ -753,7 +787,7 @@ function askOpening(){
       const n = parseFloat(String(v).replace(/[^\d.-]/g,""));
       if(!isFinite(n)){ toast("צריך מספר."); return; }
       db.opening = n - movedBefore;
-      save(); renderAll();
+      touchSettings(); save(); renderAll();
       toast("היתרה בתחילת " + labelOf(p) + " עודכנה ל־" + money(n));
     });
 }
@@ -1195,6 +1229,7 @@ $("#addForm").addEventListener("submit", e => {
   const note = $("#fDesc").value.trim();
   if(note) rec.desc = note;
 
+  stamp(rec);
   let clearedDemo = false, spread = 0;
   if(editing){
     db.items[db.items.findIndex(x=>x.id===editing)] = rec;
@@ -1216,14 +1251,14 @@ $("#addForm").addEventListener("submit", e => {
       const per = Math.round(amount / n * 100) / 100;
       const group = uid();
       for(let k = 0; k < n; k++){
-        db.items.push(Object.assign({}, rec, {
+        db.items.push(stamp(Object.assign({}, rec, {
           id: k === 0 ? rec.id : uid(),
           date: addMonths(rec.date, k),
           amount: k === n-1 ? Math.round((amount - per*(n-1))*100)/100 : per,
           title: (rec.title || "הוצאה") + " (תשלום " + (k+1) + " מתוך " + n + ")",
           instal: {group:group, i:k+1, n:n},
           receipt: k === 0 ? rec.receipt : null
-        }));
+        })));
       }
       spread = n;
     } else {
@@ -1303,7 +1338,7 @@ $("#listArea").addEventListener("input", e => {
   const val = raw === "" ? "" : parseFloat(raw);
   const cur = budget().cats[cat] || {type:"pct"};
   budget().cats[cat] = {type:cur.type || "pct", val:(val === "" || !isFinite(val)) ? "" : val};
-  save();
+  touchSettings(); save();
   refreshBudRow(cat);
   refreshBudFoot();
 });
@@ -1314,7 +1349,7 @@ $("#listArea").addEventListener("change", e => {
   const cat = sel.dataset.btype;
   const cur = budget().cats[cat] || {val:""};
   budget().cats[cat] = {type:sel.value, val:cur.val};
-  save();
+  touchSettings(); save();
   refreshBudRow(cat);
   refreshBudFoot();
 });
@@ -1365,14 +1400,14 @@ $("#listArea").addEventListener("click", e => {
       const spent = spentOn(c, prev);
       if(spent > 0) budget().cats[c] = {type:"fix", val:Math.round(spent)};
     });
-    save(); renderBudget(); renderKpis();
+    touchSettings(); save(); renderBudget(); renderKpis();
     toast("מילאתי לפי " + shortLabelOf(prev) + ". אפשר לשנות כל שורה.");
     return;
   }
   if(e.target.id === "budBase"){
     if(typeof budget().base === "number"){
       budget().base = "auto";
-      save(); renderBudget(); renderKpis();
+      touchSettings(); save(); renderBudget(); renderKpis();
       return;
     }
     ask({title:"על איזה סכום לבסס את התקציב?",
@@ -1383,7 +1418,7 @@ $("#listArea").addEventListener("click", e => {
         const n = parseFloat(String(v).replace(/[^\d.-]/g,""));
         if(!isFinite(n) || n < 0){ toast("צריך מספר."); return; }
         budget().base = n;
-        save(); renderBudget(); renderKpis();
+        touchSettings(); save(); renderBudget(); renderKpis();
       });
     return;
   }
@@ -1406,6 +1441,11 @@ $("#listArea").addEventListener("click", e => {
       .then(ok=>{
         if(!ok) return;
         db.items = db.items.filter(x=>x.id!==it.id);
+        // a tombstone, so the other device learns about the deletion too —
+        // only worth keeping if the cloud ever knew about this record
+        if(it.pushedU){
+          db.tombs = (db.tombs || []).concat([Object.assign({}, it, {receipt:null})]);
+        }
         save(); renderAll(); toast("נמחק");
       });
   }
@@ -1465,8 +1505,10 @@ function setScope(){
 
 /* ---------------- name ---------------- */
 $("#bizName").addEventListener("blur", e => {
+  const was = db.name;
   db.name = e.target.textContent.trim() || "העסק שלי";
   e.target.textContent = db.name;
+  if(db.name !== was) touchSettings();
   save();
 });
 $("#bizName").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); e.target.blur(); } });
@@ -1563,7 +1605,7 @@ $("#restoreFile").addEventListener("change", e => {
       .then(ok=>{
         e.target.value = "";
         if(!ok) return;
-        db = data; save();
+        db = data; adoptAll(); save();
         $("#bizName").textContent = db.name || "העסק שלי";
         renderAll(); toast("שוחזר");
       });
@@ -1693,6 +1735,211 @@ function seedDemo(){
   save();
 }
 
+/* ---------------- cloud sync ----------------
+   The browser stays the working copy so the app is instant and works offline.
+   Every change is stamped and pushed; every load pulls what the other device
+   wrote. A pulled row wins unless the local copy has changes not yet sent. */
+const SUPA_URL = "https://loxfudcvomxcqulmzqgg.supabase.co";
+const SUPA_KEY = "sb_publishable_Mnf2XYj56x2xsohgvDVTzA_WyUvqDEa";
+const SESS_KEY = "esek.session";
+
+// var, not let: save() may run before this line and must not hit a dead zone
+var session = null, syncBusy = false, syncTimer = null;
+
+function stamp(o){ o.u = Date.now(); return o; }
+function touchSettings(){ db.su = Date.now(); }
+
+/* after a restore or a copied-in file, everything here is newer than the cloud */
+function adoptAll(){
+  db.items.forEach(i=>{ if(!i.demo) stamp(i); });
+  touchSettings();
+  db.lastPull = null;
+}
+
+function setSession(s){
+  session = s;
+  if(s) localStorage.setItem(SESS_KEY, JSON.stringify(s));
+  else localStorage.removeItem(SESS_KEY);
+  paintSync();
+}
+function paintSync(state, text){
+  const b = $("#btnSync");
+  b.hidden = !session;
+  if(!session) return;
+  b.className = "tool sync " + (state || "");
+  b.textContent = text || "מסונכרן";
+  b.title = session.email;
+}
+
+async function authPost(grant, body){
+  const res = await fetch(SUPA_URL + "/auth/v1/token?grant_type=" + grant, {
+    method:"POST", headers:{apikey:SUPA_KEY, "Content-Type":"application/json"},
+    body:JSON.stringify(body)
+  });
+  const data = await res.json().catch(()=>({}));
+  return {ok:res.ok, data:data};
+}
+async function refreshSession(){
+  if(!session || !session.refresh_token) return false;
+  const r = await authPost("refresh_token", {refresh_token:session.refresh_token});
+  if(!r.ok){ setSession(null); return false; }
+  setSession({access_token:r.data.access_token, refresh_token:r.data.refresh_token,
+              email:(r.data.user && r.data.user.email) || session.email});
+  return true;
+}
+async function api(path, opts){
+  opts = opts || {};
+  const send = () => fetch(SUPA_URL + path, Object.assign({}, opts, {headers:
+    Object.assign({apikey:SUPA_KEY, "Content-Type":"application/json",
+                   Authorization:"Bearer " + (session ? session.access_token : "")}, opts.headers||{})}));
+  let res = await send();
+  if(res.status === 401 && await refreshSession()) res = await send();
+  return res;
+}
+
+const toRow = i => ({id:i.id, type:i.type, date:i.date, title:i.title || null,
+  descr:i.desc || null, cat:i.cat || null, amount:i.amount, pay:i.pay || null,
+  instal:i.instal || null, receipt:i.receipt || null, deleted:false});
+
+function fromRow(r){
+  const i = {id:r.id, type:r.type, date:r.date, amount:Number(r.amount)};
+  if(r.title) i.title = r.title;
+  if(r.descr) i.desc  = r.descr;
+  if(r.cat)   i.cat   = r.cat;
+  if(r.pay)   i.pay   = r.pay;
+  if(r.instal)  i.instal  = r.instal;
+  if(r.receipt) i.receipt = r.receipt;
+  i.u = i.pushedU = Date.parse(r.updated_at);
+  return i;
+}
+
+async function pull(){
+  const since = db.lastPull || "1970-01-01T00:00:00Z";
+  const res = await api("/rest/v1/records?select=*&updated_at=gt." +
+                        encodeURIComponent(since) + "&order=updated_at.asc");
+  if(!res.ok) throw new Error("pull " + res.status);
+  const rows = await res.json();
+  let newest = db.lastPull;
+  rows.forEach(r=>{
+    if(!newest || r.updated_at > newest) newest = r.updated_at;
+    const at = db.items.findIndex(x=>x.id === r.id);
+    const local = at > -1 ? db.items[at] : null;
+    if(local && local.u !== local.pushedU) return;      // local edit not sent yet — it wins
+    if(r.deleted){ if(at > -1) db.items.splice(at,1); return; }
+    if(at > -1) db.items[at] = fromRow(r); else db.items.push(fromRow(r));
+  });
+  if(newest) db.lastPull = newest;
+
+  const sres = await api("/rest/v1/settings?select=*&limit=1");
+  if(sres.ok){
+    const s = (await sres.json())[0];
+    if(s && db.su === db.suPushed){
+      db.name = s.name || db.name;
+      db.opening = Number(s.opening) || 0;
+      if(s.budget) db.budget = s.budget;
+      db.su = db.suPushed = Date.parse(s.updated_at);
+    }
+  }
+  return rows.length;
+}
+
+async function push(){
+  // small batches: a single receipt can be a couple of hundred KB
+  const dirty = db.items.filter(i=>!i.demo && i.u && i.u !== i.pushedU);
+  for(let k = 0; k < dirty.length; k += 5){
+    const batch = dirty.slice(k, k+5);
+    const res = await api("/rest/v1/records", {method:"POST",
+      headers:{Prefer:"resolution=merge-duplicates"},
+      body:JSON.stringify(batch.map(toRow))});
+    if(!res.ok) throw new Error("push " + res.status + " " + (await res.text()).slice(0,120));
+    batch.forEach(i=>{ i.pushedU = i.u; });
+  }
+
+  const tombs = db.tombs || [];
+  if(tombs.length){
+    const res = await api("/rest/v1/records", {method:"POST",
+      headers:{Prefer:"resolution=merge-duplicates"},
+      body:JSON.stringify(tombs.map(t=>Object.assign(toRow(t), {deleted:true})))});
+    if(!res.ok) throw new Error("delete " + res.status);
+    db.tombs = [];
+  }
+
+  if(db.su !== db.suPushed){
+    const res = await api("/rest/v1/settings", {method:"POST",
+      headers:{Prefer:"resolution=merge-duplicates"},
+      body:JSON.stringify([{name:db.name, opening:db.opening || 0, budget:db.budget || null}])});
+    if(!res.ok) throw new Error("settings " + res.status);
+    db.suPushed = db.su;
+  }
+  return dirty.length + tombs.length;
+}
+
+async function syncNow(){
+  if(!session || syncBusy) return;
+  syncBusy = true;
+  paintSync("busy", "מסנכרן…");
+  try{
+    await push();
+    await pull();
+    localStorage.setItem(KEY, JSON.stringify(db));
+    renderAll();
+    paintSync("", "מסונכרן");
+  }catch(err){
+    paintSync("err", navigator.onLine ? "הסנכרון נתקע" : "אין חיבור");
+  }
+  syncBusy = false;
+}
+function queueSync(){
+  if(!session) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncNow, 1200);
+}
+window.addEventListener("online", syncNow);
+window.addEventListener("focus", ()=>{ if(session) syncNow(); });
+
+/* ---------------- login ---------------- */
+function openLogin(){
+  $("#loginErr").hidden = true;
+  $("#loginEmail").value = session ? session.email : "";
+  $("#loginPass").value = "";
+  $("#login").hidden = false;
+  $("#loginEmail").focus();
+}
+function closeLogin(){ $("#login").hidden = true; }
+$("#btnLogin").addEventListener("click", ()=>{
+  if(session){
+    ask({title:"להתנתק מהסנכרון?", sub:"הרישומים יישארו על המכשיר הזה ובענן. פשוט יפסיקו להתעדכן עד ההתחברות הבאה.", yes:"כן, להתנתק"})
+      .then(ok=>{ if(ok){ setSession(null); toast("התנתקת. הרישומים נשארו כאן."); } });
+  } else openLogin();
+});
+$("#btnSync").addEventListener("click", syncNow);
+$("#loginCancel").addEventListener("click", closeLogin);
+$("#login").addEventListener("click", e=>{ if(e.target.id === "login") closeLogin(); });
+$("#loginPass").addEventListener("keydown", e=>{ if(e.key === "Enter") $("#loginGo").click(); });
+
+$("#loginGo").addEventListener("click", async ()=>{
+  const email = $("#loginEmail").value.trim(), pass = $("#loginPass").value;
+  const err = $("#loginErr");
+  if(!email || !pass){ err.textContent = "צריך אימייל וסיסמה."; err.hidden = false; return; }
+  $("#loginGo").disabled = true; $("#loginGo").textContent = "רגע…";
+  const r = await authPost("password", {email:email, password:pass});
+  $("#loginGo").disabled = false; $("#loginGo").textContent = "התחברות";
+  if(!r.ok){
+    err.textContent = (r.data.error_code === "invalid_credentials" || r.data.error === "invalid_grant")
+      ? "האימייל או הסיסמה לא נכונים." : (r.data.error_description || r.data.msg || "ההתחברות נכשלה. נסי שוב.");
+    err.hidden = false;
+    return;
+  }
+  setSession({access_token:r.data.access_token, refresh_token:r.data.refresh_token,
+              email:(r.data.user && r.data.user.email) || email});
+  closeLogin();
+  // records made before signing in belong to her too, so send them up
+  db.items.forEach(i=>{ if(!i.demo && !i.u) stamp(i); });
+  if(db.su === undefined) touchSettings();
+  toast("מחובר. מסנכרן…");
+  syncNow();
+});
+
 /* ---------------- init ---------------- */
 /* A file copied from another computer arrives with the records baked in. On an
    empty browser it just loads; on one that already has records it asks first,
@@ -1719,6 +1966,11 @@ $("#fDate").value = iso(new Date());
 setTab("out");
 renderAll();
 
+// a device that was signed in stays signed in, and catches up on open
+try{ session = JSON.parse(localStorage.getItem(SESS_KEY)) || null; }catch(e){ session = null; }
+paintSync();
+if(session) syncNow();
+
 if(localStorage.getItem(KEY) === null){
   const go = () => { seedDemo(); renderAll(); };
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(go, go); else go();
@@ -1732,7 +1984,7 @@ if(seedPending){
        yes:"כן, להחליף"})
     .then(ok=>{
       if(ok){
-        db = p.data; db.seedStamp = p.stamp; save();
+        db = p.data; db.seedStamp = p.stamp; adoptAll(); save();
         $("#bizName").textContent = db.name || "העסק שלי";
         toast("עודכן מהמחשב השני.");
       } else {
