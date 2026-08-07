@@ -1,0 +1,1749 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>הכספים של העסק</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Secular+One&family=Assistant:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: light;
+  --paper:#FFF2F5;
+  --white:#fff;
+  --ink:#2E2A2C;
+  --ink-2:#6E6266;
+  --line:#F5E3E8;
+  --in:#34B37E;
+  --in-deep:#1E8A62;
+  --actual:#2E9DC4;
+  --actual-deep:#1F7FA3;
+  --out:#FF6F91;
+  --out-deep:#D9436B;
+  --profit:#F5A623;
+  --r:22px;
+  --display:"Secular One","Arial Hebrew",system-ui,sans-serif;
+  --body:"Assistant","Arial Hebrew",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:16px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  padding:0 0 80px;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;letter-spacing:-.01em}
+button{font-family:inherit;font-size:inherit;cursor:pointer}
+:focus-visible{outline:2.5px solid var(--out-deep);outline-offset:2px;border-radius:6px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+/* a signed figure reads left-to-right, so the minus sits before the digits */
+.fig,.row .sum,.bar-up i span,.bar-dn i span{direction:ltr;unicode-bidi:isolate}
+
+/* ---------- top bar ---------- */
+.bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 0 18px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.mark{flex:none}
+#bizName{font-size:26px;line-height:1.15;padding:2px 6px;margin-right:-6px;border-radius:8px;outline:none;min-width:40px}
+#bizName:hover{background:#fff9}
+#bizName:focus{background:var(--white);box-shadow:0 0 0 2px var(--out-deep)}
+.tools{position:relative}
+.tool{border:1px solid var(--line);background:var(--white);color:var(--ink-2);padding:9px 15px;border-radius:999px;font-size:13.5px;font-weight:600;transition:background .15s,color .15s,border-color .15s}
+.tool:hover,.tool[aria-expanded="true"]{background:var(--white);color:var(--ink);border-color:var(--ink-2)}
+.tool.icon{width:42px;height:42px;padding:0;border-radius:50%;display:grid;place-items:center}
+.menu{position:absolute;top:calc(100% + 8px);inset-inline-end:0;background:var(--white);border:1px solid var(--line);border-radius:16px;padding:6px;min-width:262px;z-index:30;box-shadow:0 10px 30px rgba(46,42,44,.12)}
+.menu button{display:block;width:100%;text-align:start;border:0;background:none;padding:10px 12px;border-radius:11px;font-size:14.5px;font-weight:600;color:var(--ink)}
+.menu button small{display:block;font-size:12px;font-weight:400;color:var(--ink-2);margin-top:2px;line-height:1.35}
+.menu button:hover{background:var(--paper)}
+
+/* ---------- period ---------- */
+.period{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:6px 0 18px}
+.nav{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--white);display:grid;place-items:center;color:var(--ink);transition:background .15s,color .15s}
+.nav.flip svg{transform:scaleX(-1)}
+.nav:hover{background:var(--out-deep);color:var(--white);border-color:var(--out-deep)}
+#periodLabel{font-size:22px;min-width:150px;text-align:center;cursor:pointer;padding:4px 12px;border-radius:12px;transition:background .15s}
+#periodLabel:hover{background:var(--white)}
+.scope{display:flex;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:3px;margin-inline-start:auto}
+.scope button{border:0;background:none;color:var(--ink-2);padding:6px 16px;border-radius:999px;font-size:14px;font-weight:600}
+.scope button[aria-pressed="true"]{background:var(--ink);color:var(--white)}
+
+/* ---------- dashboard ---------- */
+.dash{display:grid;grid-template-columns:1fr minmax(280px,336px);grid-template-areas:"kpi kpi" "sum pie";gap:16px;align-items:start}
+.dash>*{min-width:0}
+.card{background:var(--white);border-radius:var(--r);padding:20px 22px}
+.card h3{font-family:var(--body);font-weight:700;font-size:15px;color:var(--ink);margin-bottom:14px}
+
+/* headline tiles — deliberately plain white, the colour lives in the charts */
+.kpis{grid-area:kpi;display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;align-items:start}
+.kpi{background:var(--white);border-radius:18px;padding:15px 18px 16px}
+.kpi-l{margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:-.01em;color:var(--ink-2)}
+.kpi-v{margin:0;font-family:var(--display);font-size:27px;line-height:1.1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:4px}
+.kpi-v .cur{font-family:var(--mono);font-size:.52em;opacity:.45;font-weight:400}
+.kpi-v.c-income{color:#157A52}
+.kpi-v.c-actual{color:#2FA878}
+.kpi-v.c-grey{color:#5F585C}
+.kpi-v.c-expense{color:#E23D57}
+.kpi-v.c-profit{color:#1F7FA3}
+.kpi-s{margin:6px 0 0;font-size:12px;color:var(--ink-2);line-height:1.35}
+.kpi-s b{font-family:var(--mono);font-weight:600;color:var(--ink)}
+.kpi-s .trend{font-weight:700;white-space:nowrap}
+.kpi-s .trend.good{color:#157A52}
+.kpi-s .trend.bad{color:#C62B45}
+.kpi-s .trend.flat{color:var(--ink-2)}
+.kpi-edit{border:0;background:none;padding:0;font:inherit;font-size:12px;color:var(--out-deep);text-decoration:underline}
+.kpi-v.has-tip{cursor:help}
+
+/* summary + three-month bars, one block, torn receipt edge */
+.summary{
+  grid-area:sum;background:var(--white);border-radius:var(--r) var(--r) 0 0;padding:20px 22px 30px;
+  --s:9px;
+  -webkit-mask:
+    radial-gradient(circle var(--s) at 50% 0, #0000 98%, #000 100%) bottom/calc(2*var(--s)) var(--s) repeat-x,
+    linear-gradient(#000 0 0) top/100% calc(100% - var(--s) + 1px) no-repeat;
+  mask:
+    radial-gradient(circle var(--s) at 50% 0, #0000 98%, #000 100%) bottom/calc(2*var(--s)) var(--s) repeat-x,
+    linear-gradient(#000 0 0) top/100% calc(100% - var(--s) + 1px) no-repeat;
+}
+.bars{display:flex;gap:10px;height:216px;margin-top:4px}
+.bgroup{flex:1;display:flex;flex-direction:column;min-width:0}
+.bset{flex:1;display:flex;gap:5px;padding:0 4px;border-radius:12px}
+.bgroup.now .bset{background:#FFF6F8}
+.bcol{flex:1;display:flex;flex-direction:column;height:100%;min-width:0;border-radius:8px;cursor:default}
+.bcol:hover{background:rgba(46,42,44,.05)}
+.bcol:hover i{filter:brightness(1.08)}
+.bar-up{display:flex;align-items:flex-end}
+.bar-up i,.bar-dn i{display:block;width:100%;position:relative;transition:height .4s cubic-bezier(.2,.7,.3,1)}
+.bar-up i{border-radius:5px 5px 0 0}
+.bar-dn i{border-radius:0 0 5px 5px}
+.bar-up i span,.bar-dn i span{position:absolute;inset-inline:-6px;text-align:center;font-family:var(--mono);font-size:9.5px;color:var(--ink-2);white-space:nowrap}
+.bar-up i span{bottom:100%;padding-bottom:3px}
+.bar-dn i span{top:100%;padding-top:3px}
+.blabel{text-align:center;font-size:12.5px;color:var(--ink-2);padding-top:8px;border-top:1px solid var(--line);margin-top:2px}
+.bgroup.now .blabel{color:var(--ink);font-weight:700}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:12.5px;color:var(--ink-2)}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend b{width:10px;height:10px;border-radius:3px;display:block}
+
+/* pie */
+.piecard{grid-area:pie}
+.pie svg{display:block;width:100%;height:auto}
+.pie-name{font-family:var(--body);font-size:12.5px;font-weight:600;fill:var(--ink)}
+.pie-val{font-family:var(--mono);font-size:13px;fill:var(--ink-2)}
+.empty-mini{font-size:13px;color:var(--ink-2);padding:14px 0}
+
+/* ---------- ledger ---------- */
+.ledger{margin-top:30px}
+.tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.tab{border:0;background:var(--white);color:var(--ink-2);padding:10px 20px;border-radius:999px;font-weight:700;font-size:14.5px;transition:.15s}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--white)}
+#tab-out[aria-selected="true"]{background:var(--out-deep)}
+#tab-in[aria-selected="true"]{background:var(--in-deep)}
+#tab-rec[aria-selected="true"]{background:var(--ink)}
+#tab-bud[aria-selected="true"]{background:var(--actual-deep)}
+
+/* ---------- budget ---------- */
+.budcard{background:var(--white);border-radius:var(--r);padding:20px 22px}
+.budhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-bottom:16px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+.budhead p{margin:0;font-size:14px;flex:1 1 260px;color:var(--ink-2)}
+.budhead p b{font-family:var(--mono);color:var(--ink)}
+.linkbtn{border:0;background:none;padding:0;font:inherit;font-size:13.5px;color:var(--actual-deep);text-decoration:underline}
+.ghost{border:1px solid var(--line);background:var(--white);color:var(--ink);padding:8px 14px;border-radius:999px;font-size:13.5px;font-weight:600}
+.ghost:hover{border-color:var(--actual-deep);color:var(--actual-deep)}
+
+.budrow{padding:14px 0;border-bottom:1px solid var(--line)}
+.budrow:last-child{border-bottom:0}
+.btop{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.btop .bn{flex:1 1 150px;font-size:15px;font-weight:600}
+.btop input{width:96px;font-family:var(--mono);font-weight:600;font-size:15px;padding:8px 11px;border:1px solid var(--line);border-radius:10px;background:var(--white);color:var(--ink)}
+.btop select{width:112px;font-family:var(--body);font-size:14px;padding:8px 8px;border:1px solid var(--line);border-radius:10px;background:var(--white);color:var(--ink)}
+.btop .blimit{width:104px;text-align:end;font-family:var(--mono);font-size:14px;color:var(--ink-2)}
+.bbot{display:flex;align-items:center;gap:12px;margin-top:10px}
+.btrack{flex:1;height:10px;background:var(--paper);border-radius:999px;overflow:hidden}
+.btrack i{display:block;height:100%;border-radius:999px;background:var(--in);transition:width .35s cubic-bezier(.2,.7,.3,1)}
+.budrow.over .btrack i{background:var(--out)}
+.budrow.near .btrack i{background:var(--profit)}
+.bbot .bs{font-size:12.5px;color:var(--ink-2);white-space:nowrap}
+.bbot .bs b{font-family:var(--mono);color:var(--ink)}
+.budrow.over .bs b{color:var(--out-deep)}
+.budrow.unset{opacity:.62}
+
+.budfoot{margin-top:18px;padding-top:16px;border-top:2px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:baseline}
+.budfoot .ft{font-size:13.5px;color:var(--ink-2)}
+.budfoot .ft b{font-family:var(--mono);color:var(--ink);font-size:14.5px}
+.budfoot .left{font-size:15px;font-weight:700}
+.budfoot .left b{font-family:var(--mono);color:var(--in-deep)}
+.budfoot .left.minus b{color:var(--out-deep)}
+
+.newbtn{border:0;background:var(--out-deep);color:#fff;padding:12px 24px;border-radius:999px;font-weight:700;font-size:15px;margin-bottom:14px}
+.newbtn:hover{filter:brightness(1.07)}
+.newbtn.in{background:var(--in-deep)}
+.sheet{position:fixed;inset:0;background:#2E2A2Ccc;display:grid;place-items:center;padding:20px;z-index:75;overflow-y:auto}
+.sheet[hidden]{display:none!important}
+.sheet-box{background:var(--white);border-radius:22px;padding:20px 22px 22px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 50px rgba(46,42,44,.3)}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.sheet-head h3{font-family:var(--display);font-size:20px}
+.sheet-x{border:0;background:var(--paper);color:var(--ink-2);width:34px;height:34px;border-radius:50%;font-size:15px;line-height:1;flex:none}
+.sheet-x:hover{background:var(--line);color:var(--ink)}
+.f-instal{width:126px}
+.instal-note{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-2)}
+.instal-note b{font-family:var(--mono);color:var(--ink)}
+.form{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.f{display:flex;flex-direction:column;gap:5px}
+.f label{font-size:12px;font-weight:700;color:var(--ink-2)}
+.f input,.f select{font-family:var(--body);font-size:15px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--white);color:var(--ink);min-width:0}
+.f input[type=date]{font-family:var(--mono);font-size:13.5px}
+.f-date{width:150px}.f-title{flex:1 1 170px}.f-amt{width:124px}.f-pay{width:150px}.f-instalon{width:auto}
+/* category and notes share one line; on an income there is no category, so notes take it all */
+#addForm.is-out .f-cat{width:calc(40% - 5px)}
+#addForm.is-out .f-desc{width:calc(60% - 5px)}
+#addForm.is-in .f-desc{flex:1 1 100%}
+.chkbox{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:14px;font-weight:600;color:var(--ink-2);white-space:nowrap;cursor:pointer}
+.chkbox input{width:17px;height:17px;accent-color:var(--out-deep);margin:0}
+.chkbox:has(input:checked){border-color:var(--out-deep);color:var(--out-deep)}
+.f-amt input{font-family:var(--mono);font-weight:600}
+.filebtn{display:inline-flex;align-items:center;gap:7px;border:1px dashed var(--line);border-radius:10px;padding:9px 14px;font-size:14px;font-weight:600;color:var(--ink-2);background:var(--white);white-space:nowrap}
+.filebtn:hover{border-color:var(--out-deep);color:var(--out-deep)}
+.filebtn.has{border-style:solid;border-color:var(--in-deep);color:var(--in-deep)}
+.save{border:0;background:var(--out-deep);color:var(--white);padding:11px 26px;border-radius:10px;font-weight:700;font-size:15px}
+.save:hover{filter:brightness(1.07)}
+.cancel{border:0;background:none;color:var(--ink-2);font-size:14px;text-decoration:underline;padding:11px 4px}
+
+/* one calm panel with hairlines, not a stack of floating cards */
+.rows{background:var(--white);border-radius:var(--r);overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:13px 20px;border-bottom:1px solid var(--line);transition:background .12s}
+.row:last-child{border-bottom:0}
+.row:hover{background:#FFF8FA}
+.row .when{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);width:48px;flex:none}
+.row .what{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}
+.row .wdesc{font-style:normal;color:var(--ink-2);font-size:13.5px}
+.row .tag{font-size:12.5px;color:var(--ink-2);white-space:nowrap}
+.row .sum{font-family:var(--mono);font-weight:600;font-size:15px;white-space:nowrap}
+.row.out .sum{color:var(--out-deep)}
+.row.in .sum{color:var(--in-deep)}
+.thumb{width:30px;height:30px;border-radius:7px;border:1px solid var(--line);background:var(--paper);flex:none;padding:0;display:grid;place-items:center;font-size:10px;font-weight:700;color:var(--ink-2);overflow:hidden;opacity:.85}
+.thumb:hover{opacity:1}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.noreceipt{width:30px;flex:none}
+.act{border:0;background:none;color:var(--ink-2);opacity:.28;padding:4px 5px;border-radius:8px;font-size:13px;line-height:1;transition:opacity .12s}
+.row:hover .act{opacity:.6}
+.act:hover{opacity:1!important;background:var(--paper)}
+@media (hover:none){ .act{opacity:.55} }   /* no hover on a phone, so keep them findable */
+.empty{background:var(--white);border-radius:var(--r);padding:38px 24px;text-align:center;color:var(--ink-2)}
+.empty strong{display:block;font-family:var(--display);font-size:19px;color:var(--ink);margin-bottom:6px;font-weight:400}
+
+.rechead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.recswitch{display:flex;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:3px}
+.recswitch button{border:0;background:none;color:var(--ink-2);padding:8px 18px;border-radius:999px;font-size:14px;font-weight:700}
+.recswitch button b{font-family:var(--mono);font-weight:600;font-size:12.5px;opacity:.75;margin-inline-start:3px}
+.recswitch button[aria-pressed="true"]{background:var(--ink);color:var(--white)}
+.reclist{background:var(--white);border-radius:var(--r);overflow:hidden}
+.recrow{display:flex;align-items:center;gap:12px;width:100%;text-align:start;background:none;border:0;border-bottom:1px solid var(--line);padding:9px 20px;font-family:inherit;transition:background .12s}
+.recrow:last-child{border-bottom:0}
+.recrow:hover{background:#FFF8FA}
+.rdate{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);width:48px;flex:none}
+.rname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;color:var(--ink)}
+.rname em{font-style:normal;color:var(--ink-2);font-size:13.5px}
+.ramt{font-family:var(--mono);font-weight:600;font-size:15px;white-space:nowrap;direction:ltr;unicode-bidi:isolate}
+.recrow.out .ramt{color:var(--out-deep)}
+.recrow.in .ramt{color:var(--in-deep)}
+.rthumb{width:42px;height:42px;border-radius:9px;object-fit:cover;border:1px solid var(--line);background:var(--paper);flex:none}
+.rthumb.pdf{display:grid;place-items:center;font-size:10.5px;font-weight:700;color:var(--ink-2)}
+
+/* ---------- lightbox + toast ---------- */
+.lb{position:fixed;inset:0;background:#2E2A2Cee;display:none;place-items:center;padding:24px;z-index:50}
+.lb.on{display:grid}
+.lb-inner{max-width:900px;width:100%;max-height:100%;display:flex;flex-direction:column;gap:12px;align-items:center}
+.lb img,.lb embed{max-width:100%;max-height:76vh;border-radius:12px;background:#fff}
+.lb embed{width:100%;height:76vh}
+.lb-bar{display:flex;gap:10px;align-items:center;color:#fff;font-size:14px;flex-wrap:wrap;justify-content:center}
+.lb-bar a,.lb-bar button{color:#fff;border:1px solid #ffffff44;background:none;padding:7px 15px;border-radius:999px;text-decoration:none;font-size:14px;font-family:inherit}
+.lb-bar a:hover,.lb-bar button:hover{background:#ffffff22}
+.ask{position:fixed;inset:0;background:#2E2A2Ccc;display:grid;place-items:center;padding:24px;z-index:80}
+.ask[hidden]{display:none!important}
+.ask-box{background:var(--white);border-radius:22px;padding:26px 26px 20px;max-width:380px;width:100%;box-shadow:0 20px 50px rgba(46,42,44,.3)}
+.ask-t{margin:0;font-family:var(--display);font-size:20px;line-height:1.25}
+.ask-s{margin:8px 0 0;font-size:14px;color:var(--ink-2)}
+#askInput{width:100%;margin-top:16px;font-family:var(--mono);font-weight:600;font-size:18px;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--white);color:var(--ink)}
+#askInput[hidden]{display:none}
+.ask-btns{display:flex;gap:10px;justify-content:flex-start;margin-top:22px}
+.ask-btns button{border:0;padding:11px 22px;border-radius:999px;font-weight:700;font-size:15px;font-family:inherit}
+#askYes{background:var(--out-deep);color:#fff}
+#askYes:hover{filter:brightness(1.07)}
+#askNo{background:var(--paper);color:var(--ink)}
+#askNo:hover{background:var(--line)}
+.tip{position:fixed;z-index:70;background:var(--ink);color:#fff;padding:9px 13px;border-radius:13px;font-size:13px;line-height:1.3;pointer-events:none;white-space:nowrap;transform:translate(-50%,-100%);box-shadow:0 8px 24px rgba(46,42,44,.22)}
+.tip b{display:block;font-family:var(--mono);font-weight:600;font-size:16px;margin-top:3px;direction:ltr;unicode-bidi:isolate}
+.tip .dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-left:7px;vertical-align:middle}
+.tip.list{white-space:normal;max-width:300px;padding:11px 14px}
+.tip-h{font-size:11.5px;opacity:.7;margin-bottom:7px}
+.tip-r{display:flex;align-items:baseline;gap:8px;padding:3px 0;font-size:13px}
+.tip-r .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tip-r .e{flex:none;font-size:11px;opacity:.6}
+.tip-r .v{flex:none;font-family:var(--mono);font-size:12.5px}
+.toast{position:fixed;inset-inline:0;bottom:24px;margin:auto;width:max-content;max-width:90%;background:var(--ink);color:#fff;padding:12px 22px;border-radius:999px;font-size:14.5px;opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none;z-index:60}
+.toast.on{opacity:1;transform:none}
+
+@media (max-width:900px){
+  .dash{grid-template-columns:1fr;grid-template-areas:"kpi" "sum" "pie"}
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px}
+  .kpi{padding:13px 15px 14px}
+  .kpi-v{font-size:23px}
+  .f-date,.f-amt,.f-pay,.f-instal{width:calc(50% - 5px)}
+  .f-title{flex:1 1 100%}
+  .row .tag{display:none}
+  .bars{height:184px}
+}
+@media (max-width:600px){
+  .row{flex-wrap:wrap;row-gap:2px;padding:12px 16px}
+  .recrow{padding:9px 16px}
+  .row .what{flex:1 1 100%;order:-1;white-space:normal;font-weight:600;font-size:14.5px}
+  .row .thumb,.row .noreceipt{margin-inline-start:auto}
+  .bar-up i span,.bar-dn i span{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media print{
+  body{background:#fff}
+  .tools,.period .nav,.scope,.tabs,.newbtn,.addcard,.act,.lb,.toast{display:none!important}
+  .card,.row,.summary,.kpi{border:1px solid #eee}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="bar">
+    <div class="brand">
+      <svg class="mark" width="42" height="42" viewBox="0 0 42 42" aria-hidden="true">
+        <rect width="42" height="42" rx="13" fill="#FFE3EA"/>
+        <circle cx="16" cy="17" r="8" fill="#FF6F91"/>
+        <path d="M18 33a11 11 0 0 1 11-11v11H18Z" fill="#34B37E"/>
+        <circle cx="29" cy="14" r="3.4" fill="#F5A623"/>
+      </svg>
+      <h1 id="bizName" contenteditable="true" spellcheck="false">העסק שלי</h1>
+    </div>
+    <div class="tools">
+      <button class="tool icon" id="btnMore" aria-label="הגדרות וקבצים" aria-expanded="false" aria-controls="toolMenu">
+        <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M1 1h16M1 7h16M1 13h16"/></svg>
+      </button>
+      <div class="menu" id="toolMenu" hidden>
+        <button id="btnCsv">ייצוא לאקסל<small>רישומי התקופה, לצפייה או לרואה חשבון</small></button>
+        <button id="btnClone">העתקה למחשב אחר<small>קובץ אחד שכולל את האפליקציה ואת כל הרישומים</small></button>
+        <button id="btnBackup">גיבוי לקובץ<small>עותק של הכל, כולל הקבלות</small></button>
+        <button id="btnRestore">שחזור מגיבוי<small>טעינת קובץ גיבוי במקום מה שרשום עכשיו</small></button>
+      </div>
+      <input type="file" id="restoreFile" accept="application/json" hidden>
+    </div>
+  </header>
+
+  <div class="period">
+    <button class="nav" id="prev" aria-label="לתקופה הקודמת">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+    </button>
+    <h2 id="periodLabel" role="button" tabindex="0" title="חזרה לחודש הנוכחי">—</h2>
+    <button class="nav flip" id="next" aria-label="לתקופה הבאה">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+    </button>
+    <div class="scope" role="group" aria-label="טווח זמן">
+      <button id="sc-month" aria-pressed="true">חודש</button>
+      <button id="sc-year" aria-pressed="false">שנה</button>
+    </div>
+  </div>
+
+  <section class="dash">
+
+    <div class="kpis" id="kpis"></div>
+
+    <article class="summary">
+      <div class="bars" id="bars"></div>
+      <div class="legend">
+        <span><b style="background:#157A52"></b>הכנסות</span>
+        <span><b style="background:#2FA878"></b>נכנס בפועל</span>
+        <span><b style="background:#E23D57"></b>הוצאות</span>
+        <span><b style="background:#1F7FA3"></b>רווח</span>
+      </div>
+    </article>
+
+    <div class="card piecard">
+      <h3>פילוח הוצאות</h3>
+      <div id="pie"></div>
+    </div>
+
+  </section>
+
+  <section class="ledger">
+    <div class="tabs" role="tablist">
+      <button class="tab" id="tab-out" role="tab" aria-selected="true">הוצאות</button>
+      <button class="tab" id="tab-in" role="tab" aria-selected="false">הכנסות</button>
+      <button class="tab" id="tab-bud" role="tab" aria-selected="false">תקציב</button>
+      <button class="tab" id="tab-rec" role="tab" aria-selected="false">קבלות</button>
+    </div>
+
+    <button class="newbtn" id="btnNew">+ הוצאה חדשה</button>
+
+    <div class="sheet" id="sheet" hidden>
+    <div class="sheet-box" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-head">
+      <h3 id="sheetTitle">הוצאה חדשה</h3>
+      <button type="button" class="sheet-x" id="sheetClose" aria-label="סגירה">✕</button>
+    </div>
+    <form id="addForm">
+      <div class="form">
+        <div class="f f-date">
+          <label for="fDate">תאריך</label>
+          <input type="date" id="fDate" required>
+        </div>
+        <div class="f f-title">
+          <label for="fTitle" id="lblTitle">על מה</label>
+          <input type="text" id="fTitle" placeholder="למשל: חומרי גלם" autocomplete="off">
+        </div>
+        <div class="f f-cat" id="wrapCat">
+          <label for="fCat">קטגוריה</label>
+          <select id="fCat"></select>
+        </div>
+        <div class="f f-desc" id="wrapDesc">
+          <label for="fDesc" id="lblDesc">תיאור</label>
+          <input type="text" id="fDesc" placeholder="למשל: חבילת 4 טיפולים" autocomplete="off">
+        </div>
+        <div class="f f-pay" id="wrapPay">
+          <label for="fPay" id="lblPay">איך שולם</label>
+          <select id="fPay"></select>
+        </div>
+        <div class="f f-instalon" id="wrapInstalOn" hidden>
+          <label>תשלומים</label>
+          <label class="chkbox"><input type="checkbox" id="fInstalOn"><span>חילקתי לתשלומים</span></label>
+        </div>
+        <div class="f f-instal" id="wrapInstal" hidden>
+          <label for="fInstal">כמה תשלומים</label>
+          <input type="number" id="fInstal" min="2" max="36" step="1" value="3">
+        </div>
+        <div class="f f-amt">
+          <label for="fAmount">סכום ₪</label>
+          <input type="text" id="fAmount" inputmode="decimal" placeholder="0" required>
+        </div>
+        <div class="f">
+          <label>קבלה</label>
+          <label class="filebtn" id="fileLabel" for="fFile">📎 <span id="fileName">צירוף קבלה</span></label>
+          <input type="file" id="fFile" accept="image/*,application/pdf" hidden>
+        </div>
+        <button type="submit" class="save" id="saveBtn">הוספה</button>
+        <button type="button" class="cancel" id="cancelBtn">ביטול</button>
+      </div>
+      <p class="instal-note" id="instalNote" hidden></p>
+    </form>
+    </div>
+    </div>
+
+    <div id="listArea"></div>
+  </section>
+
+</div>
+
+<div class="lb" id="lb">
+  <div class="lb-inner">
+    <div id="lbBody"></div>
+    <div class="lb-bar">
+      <span id="lbTitle"></span>
+      <a id="lbDownload" download>הורדה</a>
+      <button id="lbClose">סגירה</button>
+    </div>
+  </div>
+</div>
+
+<div class="ask" id="ask" hidden>
+  <div class="ask-box" role="alertdialog" aria-modal="true" aria-labelledby="askTitle">
+    <p class="ask-t" id="askTitle"></p>
+    <p class="ask-s" id="askSub"></p>
+    <input type="text" inputmode="decimal" id="askInput" hidden>
+    <div class="ask-btns">
+      <button type="button" id="askNo">ביטול</button>
+      <button type="button" id="askYes">אישור</button>
+    </div>
+  </div>
+</div>
+
+<div class="tip" id="tip" hidden></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------- data ---------------- */
+const KEY = "esek.v1";
+const CATS = ["שיווק","תוכנות","נסיעות","קורסים","ציוד","ספקים","עמלות ומיסים"];
+const MONTHS = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+const PAY_IN  = [["bank","העברה בנקאית"],["card","אשראי"],["bit","ביט / פייבוקס"],["cash","מזומן"],["instal","תשלומים"]];
+const PAY_OUT = [["bank","העברה בנקאית"],["card","אשראי"],["cash","מזומן"],["instal","תשלומים"]];
+const PAY_TAG = {bank:"העברה", card:"אשראי", bit:"ביט", cash:"מזומן", instal:"תשלומים"};
+/* the four measures keep one colour each, in the tiles and in the chart alike */
+const C_IN = "#157A52", C_ACT = "#2FA878", C_OUT = "#E23D57", C_PRO = "#1F7FA3";
+const PIE_COLORS = ["#FF6F91","#F5A623","#34B37E","#2E9DC4","#FFA1B8","#FFD37A","#7FD9B8","#9FD8E8","#FFC2A0"];
+
+let db = load();
+function load(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(KEY));
+    if(raw && Array.isArray(raw.items)) return raw;
+  }catch(e){}
+  return {name:"העסק שלי", opening:0, items:[], budget:{base:"auto", cats:{}}};
+}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(db)); return true; }
+  catch(e){ toast("הזיכרון של הדפדפן מלא. ייצאי גיבוי ומחקי קבלות ישנות."); return false; }
+}
+
+const today = new Date();
+let view = {scope:"month", y: today.getFullYear(), m: today.getMonth()};
+let tab = "out";
+let recSide = "out";
+let editing = null;
+let pendingFile = null;
+
+/* ---------------- helpers ---------------- */
+const $ = s => document.querySelector(s);
+const money = n => {
+  const neg = n < 0, a = Math.abs(n);
+  const s = a % 1 ? a.toLocaleString("he-IL",{minimumFractionDigits:2,maximumFractionDigits:2})
+                  : Math.round(a).toLocaleString("he-IL");
+  return (neg ? "−" : "") + "₪" + s;
+};
+/* the display face has no ₪ glyph, so the symbol is set in the mono face beside the figure */
+const moneyHtml = n =>
+  '<span class="cur">₪</span><span class="fig">' + (n < 0 ? "−" : "") + money(n).replace("−","").replace("₪","") + '</span>';
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const pad = n => String(n).padStart(2,"0");
+const iso = d => d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate());
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtDate = s => s.slice(8,10) + "." + s.slice(5,7);
+/* records saved with an option that no longer exists read as bank transfers */
+const payOf = i => (!i.pay || !PAY_TAG[i.pay]) ? "bank" : i.pay;
+
+/* our own confirmation box: browsers silently suppress native confirm() after a
+   few dialogs, which made the delete button look broken */
+let askResolve = null;
+function ask(o){
+  return new Promise(res=>{
+    askResolve = res;
+    $("#askTitle").textContent = o.title;
+    $("#askSub").textContent = o.sub || "";
+    $("#askSub").hidden = !o.sub;
+    const inp = $("#askInput");
+    inp.hidden = !o.input;
+    if(o.input) inp.value = (o.value == null ? "" : o.value);
+    $("#askYes").textContent = o.yes || "אישור";
+    $("#ask").hidden = false;
+    if(o.input){ inp.focus(); inp.select(); } else { $("#askYes").focus(); }
+  });
+}
+/* resolves to true/false for a question, or to the typed text (null on cancel) */
+function closeAsk(ok){
+  if(!askResolve) return;
+  const inp = $("#askInput");
+  const asked = !inp.hidden;
+  $("#ask").hidden = true;
+  const r = askResolve; askResolve = null;
+  r(asked ? (ok ? inp.value : null) : ok);
+}
+$("#askYes").addEventListener("click", ()=>closeAsk(true));
+$("#askNo").addEventListener("click", ()=>closeAsk(false));
+$("#ask").addEventListener("click", e=>{ if(e.target.id === "ask") closeAsk(false); });
+$("#askInput").addEventListener("keydown", e=>{ if(e.key === "Enter"){ e.preventDefault(); closeAsk(true); } });
+
+let toastT;
+function toast(msg){
+  const t = $("#toast");
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove("on"), 3400);
+}
+
+/* ---------------- period maths ---------------- */
+function periodOf(step){                       // step -1 / 0 / +1 around the viewed period
+  if(view.scope === "year") return {scope:"year", y:view.y + step, m:0};
+  const d = new Date(view.y, view.m + step, 1);
+  return {scope:"month", y:d.getFullYear(), m:d.getMonth()};
+}
+function startOf(p){ return p.scope === "year" ? p.y + "-01-01" : p.y + "-" + pad(p.m+1) + "-01"; }
+function labelOf(p){ return p.scope === "year" ? String(p.y) : MONTHS[p.m] + " " + p.y; }
+function shortLabelOf(p){ return p.scope === "year" ? String(p.y) : MONTHS[p.m]; }
+
+function inPeriod(i, p){
+  const [y,m] = i.date.split("-").map(Number);
+  return p.scope === "year" ? y === p.y : (y === p.y && m-1 === p.m);
+}
+function itemsOf(p){
+  return db.items.filter(i=>inPeriod(i,p)).sort((a,b)=> a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+}
+
+/* When a client pays in instalments the deal is income the day it is signed,
+   but the money lands month by month. These are the dates the cash arrives. */
+function cashEvents(i){
+  const n = (i.pay === "instal" && i.instal) ? i.instal.n : 1;
+  if(n < 2) return [{date:i.date, amount:i.amount}];
+  const per = Math.round(i.amount / n * 100) / 100;
+  const out = [];
+  for(let k = 0; k < n; k++){
+    out.push({date: addMonths(i.date, k),
+              amount: k === n-1 ? Math.round((i.amount - per*(n-1))*100)/100 : per});
+  }
+  return out;
+}
+function dateInPeriod(d, p){
+  const [y,m] = d.split("-").map(Number);
+  return p.scope === "year" ? y === p.y : (y === p.y && m-1 === p.m);
+}
+
+/* who the money in the till this period actually came from */
+function cashSources(p){
+  const list = [];
+  db.items.filter(i=>i.type === "in").forEach(i=>{
+    const ev = cashEvents(i);
+    ev.forEach((e,k)=>{
+      if(!dateInPeriod(e.date, p)) return;
+      list.push({name: i.title || "בלי שם", amount: e.amount,
+                 note: ev.length > 1 ? "תשלום " + (k+1) + "/" + ev.length : PAY_TAG[payOf(i)]});
+    });
+  });
+  return list.sort((a,b)=>b.amount - a.amount);
+}
+
+function figures(p){
+  const f = {income:0, actual:0, expense:0};
+  db.items.forEach(i=>{
+    if(i.type === "in"){
+      if(inPeriod(i,p)) f.income += i.amount;                       // the deal
+      cashEvents(i).forEach(e=>{ if(dateInPeriod(e.date,p)) f.actual += e.amount; });
+    } else if(inPeriod(i,p)){
+      f.expense += i.amount;   // expense instalments are already a row per month
+    }
+  });
+  f.profit = f.actual - f.expense;
+  return f;
+}
+
+/* money in the till at the moment a period opens */
+function balanceBefore(p){
+  const start = startOf(p);
+  let bal = db.opening || 0;
+  db.items.forEach(i=>{
+    if(i.type === "in") cashEvents(i).forEach(e=>{ if(e.date < start) bal += e.amount; });
+    else if(i.date < start) bal -= i.amount;
+  });
+  return bal;
+}
+
+/* ---------------- budget ----------------
+   A budget is next month's spending plan, sized to the money that actually
+   arrived last month. Fixed costs are set in shekels, variable ones as a
+   percentage of that base so they shrink by themselves in a weak month. */
+function budget(){
+  if(!db.budget) db.budget = {base:"auto", cats:{}};
+  if(!db.budget.cats) db.budget.cats = {};
+  return db.budget;
+}
+function budgetBase(){
+  const b = budget();
+  if(typeof b.base === "number") return b.base;
+  return figures(periodOf(-1)).actual;      // the money that really landed last period
+}
+function limitOf(cat){
+  const c = budget().cats[cat];
+  if(!c || !isFinite(c.val) || c.val <= 0) return null;
+  return c.type === "fix" ? c.val : budgetBase() * c.val / 100;
+}
+function spentOn(cat, p){
+  return db.items
+    .filter(i => i.type === "out" && (i.cat || "אחר") === cat && inPeriod(i, p))
+    .reduce((s,i) => s + i.amount, 0);
+}
+function budgetTotals(p){
+  let limit = 0, spent = 0, planned = 0;
+  CATS.forEach(c=>{
+    const l = limitOf(c);
+    if(l !== null){ limit += l; planned++; }
+    spent += spentOn(c, p);
+  });
+  return {limit:limit, spent:spent, planned:planned};
+}
+
+/* ---------------- render ---------------- */
+function renderAll(){
+  const p = periodOf(0);
+  $("#periodLabel").textContent = labelOf(p);
+  renderKpis();
+  renderBars();
+  renderPie();
+  renderList();
+}
+
+function renderKpis(){
+  const p = periodOf(0);
+  const f = figures(p);
+  const startBal = balanceBefore(p);
+  const endBal = startBal + f.profit;
+  const when = view.scope === "year" ? "השנה" : "החודש";
+  const was  = view.scope === "year" ? "מהשנה הקודמת" : "מהחודש הקודם";
+
+  const prev = figures(periodOf(-1));
+
+  /* The arrow points the way the number moved; the colour says whether that is
+     good news. For expenses it is the other way round — less is better. */
+  function trend(cur, before, goodWhenUp, sinceLabel){
+    const diff = cur - before;
+    if(diff === 0) return before ? '<span class="trend flat">בדיוק כמו קודם</span>' : "";
+    const up = diff > 0;
+    const good = goodWhenUp ? up : !up;
+    return '<span class="trend ' + (good ? "good" : "bad") + '">' +
+           (up ? "↑" : "↓") + " " + money(Math.abs(diff)) + '</span> ' + (sinceLabel || was);
+  }
+
+  const tiles = [
+    {l:"הכנסות", v:f.income,  c:"c-income",  s:trend(f.income,  prev.income,  true)},
+    {l:"נכנס בפועל " + when, v:f.actual, c:"c-actual", id:"kpiActual",
+     s:trend(f.actual, prev.actual, true)},
+    {l:"הוצאות", v:f.expense, c:"c-expense", s:trend(f.expense, prev.expense, false)},
+    {l:"רווח (נכנס − הוצאות)", v:f.profit, c:"c-profit", s:trend(f.profit, prev.profit, true)},
+
+    {l:"כמה בחשבון בהתחלה", v:startBal, c:"c-grey",
+     s:'<button class="kpi-edit" id="editOpening">עדכון היתרה</button>'},
+    {l:"כמה בחשבון בסוף",   v:endBal,   c:"c-grey",
+     s:trend(endBal, startBal, true, "מתחילת " + when)}
+  ];
+
+  $("#kpis").innerHTML = tiles.map(t=>
+    '<div class="kpi"><p class="kpi-l">'+t.l+'</p>'+
+    '<p class="kpi-v '+(t.c || "")+(t.id ? ' has-tip" id="'+t.id : "")+'">'+moneyHtml(t.v)+'</p>'+
+    (t.s ? '<p class="kpi-s">'+t.s+'</p>' : "")+'</div>').join("");
+
+  const eo = $("#editOpening");
+  if(eo) eo.addEventListener("click", askOpening);
+
+  // the "who paid" breakdown appears only while the pointer is on the figure
+  const av = $("#kpiActual");
+  if(av && cashSources(p).length){
+    av.addEventListener("pointerenter", e => showSources(e.clientX, e.clientY));
+    av.addEventListener("pointermove",  e => showSources(e.clientX, e.clientY));
+    av.addEventListener("pointerleave", hideTip);
+    av.addEventListener("click", e => {
+      showSources(e.clientX, e.clientY);
+      clearTimeout(tipT); tipT = setTimeout(hideTip, 3200);
+    });
+  }
+}
+
+/* She types the balance as her bank shows it at the start of the month she is
+   looking at; we back out the opening figure that produces it. */
+function askOpening(){
+  const p = periodOf(0);
+  const shown = balanceBefore(p);
+  const movedBefore = shown - (db.opening || 0);
+  ask({title:"כמה כסף היה בחשבון בתחילת " + labelOf(p) + "?",
+       sub:"אפשר להעתיק את המספר מאפליקציית הבנק.",
+       input:true, value:Math.round(shown), yes:"שמירה"})
+    .then(v=>{
+      if(v === null) return;
+      const n = parseFloat(String(v).replace(/[^\d.-]/g,""));
+      if(!isFinite(n)){ toast("צריך מספר."); return; }
+      db.opening = n - movedBefore;
+      save(); renderAll();
+      toast("היתרה בתחילת " + labelOf(p) + " עודכנה ל־" + money(n));
+    });
+}
+/* the utility actions live behind one quiet menu, off the main board */
+const menu = $("#toolMenu"), moreBtn = $("#btnMore");
+function closeMenu(){ menu.hidden = true; moreBtn.setAttribute("aria-expanded","false"); }
+moreBtn.addEventListener("click", e => {
+  e.stopPropagation();
+  const open = menu.hidden;
+  menu.hidden = !open;
+  moreBtn.setAttribute("aria-expanded", String(open));
+});
+menu.addEventListener("click", closeMenu);
+document.addEventListener("click", e => { if(!e.target.closest(".tools")) closeMenu(); });
+document.addEventListener("keydown", e => { if(e.key === "Escape") closeMenu(); });
+
+
+function renderBars(){
+  const periods = [periodOf(-1), periodOf(0), periodOf(1)];
+  const data = periods.map(p=>({p:p, f:figures(p)}));
+
+  let maxUp = 0, maxDn = 0;
+  data.forEach(d=>{
+    maxUp = Math.max(maxUp, d.f.income, d.f.actual, d.f.expense, Math.max(0, d.f.profit));
+    maxDn = Math.max(maxDn, Math.max(0, -d.f.profit));
+  });
+  if(!maxUp && !maxDn) maxUp = 1;
+
+  const upShare = maxDn ? Math.round(maxUp / (maxUp + maxDn) * 100) : 100;
+  const dnShare = 100 - upShare;
+
+  const bar = (val, color, name, when) => {
+    const up = val >= 0;
+    const h = up ? (maxUp ? val / maxUp * 100 : 0) : (maxDn ? -val / maxDn * 100 : 0);
+    const tag = val ? '<span>' + money(Math.round(val)).replace("₪","") + '</span>' : "";
+    return '<div class="bcol" data-name="'+name+'" data-when="'+when+'" ' +
+             'data-val="'+money(Math.round(val))+'" data-color="'+color+'">' +
+      '<div class="bar-up" style="height:'+upShare+'%">' +
+        (up ? '<i style="height:'+h+'%;background:'+color+'">'+tag+'</i>' : '') +
+      '</div>' +
+      '<div class="bar-dn" style="height:'+dnShare+'%">' +
+        (!up ? '<i style="height:'+h+'%;background:'+color+'">'+tag+'</i>' : '') +
+      '</div></div>';
+  };
+
+  $("#bars").innerHTML = data.map((d,idx)=>{
+    const w = shortLabelOf(d.p);
+    return '<div class="bgroup'+(idx===1?" now":"")+'">'+
+      '<div class="bset">'+
+        bar(d.f.income,  C_IN,  "הכנסות", w) + bar(d.f.actual,  C_ACT, "נכנס בפועל", w) +
+        bar(d.f.expense, C_OUT, "הוצאות", w) + bar(d.f.profit, C_PRO, "רווח", w) +
+      '</div>'+
+      '<div class="blabel">'+w+'</div>'+
+    '</div>';
+  }).join("");
+
+}
+
+/* hovering a column tells you which figure it is and how much — tapping does the
+   same on a phone, where the small labels above the bars are hidden */
+const tip = $("#tip");
+let tipT;
+function placeTip(x, y){
+  const r = tip.getBoundingClientRect();
+  const half = r.width / 2 + 8;
+  tip.style.left = Math.min(Math.max(x, half), window.innerWidth - half) + "px";
+  tip.style.top  = Math.max(y - 14, r.height + 10) + "px";
+}
+function showTip(col, x, y){
+  tip.classList.remove("list");
+  tip.innerHTML = '<span class="dot" style="background:'+col.dataset.color+'"></span>' +
+                  col.dataset.name + ' · ' + col.dataset.when +
+                  '<b>' + col.dataset.val + '</b>';
+  tip.hidden = false;
+  placeTip(x, y);
+}
+function showSources(x, y){
+  const src = cashSources(periodOf(0));
+  if(!src.length){ hideTip(); return; }
+  const shown = src.slice(0, 8), rest = src.length - shown.length;
+  tip.classList.add("list");
+  tip.innerHTML = '<div class="tip-h">ממי נכנס הכסף ' +
+      (view.scope === "year" ? "השנה" : "החודש") + '</div>' +
+    shown.map(s=>'<div class="tip-r"><span class="n">'+esc(s.name)+'</span>'+
+      '<span class="e">'+s.note+'</span><span class="v">'+money(s.amount)+'</span></div>').join("") +
+    (rest ? '<div class="tip-h" style="margin:6px 0 0">ועוד '+rest+'</div>' : "");
+  tip.hidden = false;
+  placeTip(x, y);
+}
+function hideTip(){ tip.hidden = true; }
+
+$("#bars").addEventListener("pointermove", e => {
+  const col = e.target.closest(".bcol");
+  if(!col){ hideTip(); return; }
+  clearTimeout(tipT);
+  showTip(col, e.clientX, e.clientY);
+});
+$("#bars").addEventListener("pointerleave", hideTip);
+$("#bars").addEventListener("click", e => {          // touch
+  const col = e.target.closest(".bcol");
+  if(!col) return;
+  showTip(col, e.clientX, e.clientY);
+  clearTimeout(tipT); tipT = setTimeout(hideTip, 2600);
+});
+window.addEventListener("scroll", hideTip, {passive:true});
+
+function renderPie(){
+  const outs = itemsOf(periodOf(0)).filter(i=>i.type==="out");
+  const map = {};
+  outs.forEach(i=>{ const c = i.cat || "אחר"; map[c] = (map[c]||0) + i.amount; });
+  const rows = Object.entries(map).sort((a,b)=>b[1]-a[1]);
+  const total = rows.reduce((s,r)=>s+r[1], 0);
+
+  if(!total){
+    $("#pie").innerHTML = '<p class="empty-mini">אין עדיין הוצאות בתקופה הזאת, אז אין מה לפלח.</p>';
+    return;
+  }
+
+  const R = 52, W = 22, C = 2 * Math.PI * R;
+
+  /* every slice carries its own name and amount, set beside it and joined by a
+     short line — no legend underneath, nothing in the middle */
+  let acc = 0, frac = 0;
+  const seg = [], lab = [];
+  rows.forEach(([name,val],idx)=>{
+    const color = PIE_COLORS[idx % PIE_COLORS.length];
+    const len = val / total * C;
+    const gap = len > 6 ? 2 : 0;
+    seg.push('<circle r="'+R+'" cx="0" cy="0" fill="none" stroke="'+color+'"'+
+      ' stroke-width="'+W+'" stroke-dasharray="'+(len-gap)+' '+(C-len+gap)+'"'+
+      ' stroke-dashoffset="'+(-acc)+'" transform="rotate(-90)"></circle>');
+
+    const a = (frac + (val/total)/2) * Math.PI * 2 - Math.PI/2;
+    lab.push({name:name, val:val, color:color,
+              side: Math.cos(a) >= 0 ? 1 : -1,
+              x0: Math.cos(a) * (R + W/2 - 2),
+              y0: Math.sin(a) * (R + W/2 - 2),
+              y:  Math.sin(a) * (R + W/2 + 6)});
+    acc += len; frac += val/total;
+  });
+
+  // keep labels on the same side from landing on top of each other
+  [1,-1].forEach(side=>{
+    const side_labels = lab.filter(l=>l.side===side).sort((a,b)=>a.y-b.y);
+    for(let i=1;i<side_labels.length;i++){
+      // each label is two lines tall, so they need room for both
+      const gap = side_labels[i].y - side_labels[i-1].y;
+      if(gap < 38) side_labels[i].y = side_labels[i-1].y + 38;
+    }
+  });
+
+  const spread = lab.length ? Math.max(...lab.map(l=>Math.abs(l.y))) : R;
+  const half = Math.max(R + W, spread) + 26;
+  const vbW = 320, vbH = Math.max(half * 2, (R + W) * 2 + 12);
+
+  const labels = lab.map(l=>{
+    const lx = l.side * (R + W/2 + 12);
+    const tx = l.side * (R + W/2 + 18);
+    // the text runs right-to-left, so "end" is its left edge: anchoring a
+    // right-hand label at "end" is what pushes it away from the ring
+    const anchor = l.side > 0 ? "end" : "start";
+    return '<line x1="'+l.x0.toFixed(1)+'" y1="'+l.y0.toFixed(1)+'" x2="'+lx+'" y2="'+l.y.toFixed(1)+'"'+
+             ' stroke="'+l.color+'" stroke-width="1.5" stroke-linecap="round"></line>'+
+           '<text class="pie-name" x="'+tx+'" y="'+(l.y-2).toFixed(1)+'" text-anchor="'+anchor+'">'+esc(l.name)+'</text>'+
+           '<text class="pie-val" x="'+tx+'" y="'+(l.y+14).toFixed(1)+'" text-anchor="'+anchor+'">'+money(l.val)+'</text>';
+  }).join("");
+
+  $("#pie").innerHTML =
+    '<div class="pie"><svg viewBox="'+(-vbW/2)+' '+(-vbH/2)+' '+vbW+' '+vbH+'"'+
+      ' role="img" aria-label="פילוח הוצאות לפי קטגוריה">' + seg.join("") + labels + '</svg></div>';
+}
+
+function renderBudget(){
+  const area = $("#listArea");
+  const p = periodOf(0);
+
+  if(view.scope === "year"){
+    area.innerHTML = '<div class="empty"><strong>התקציב עובד לפי חודש</strong>עברי לתצוגת "חודש" למעלה כדי לקבוע ולעקוב.</div>';
+    return;
+  }
+
+  const base = budgetBase();
+  const prevLabel = shortLabelOf(periodOf(-1));
+  const manual = typeof budget().base === "number";
+  const t = budgetTotals(p);
+
+  const head =
+    '<div class="budhead"><p>' +
+      (manual
+        ? 'התקציב מחושב מבסיס שקבעת: <b>'+money(base)+'</b>. '
+        : 'התקציב מחושב מ־<b>'+money(base)+'</b> שנכנסו ב'+prevLabel+'. ') +
+      '<button class="linkbtn" id="budBase">'+(manual ? "חזרה לחישוב אוטומטי" : "קביעת בסיס אחר")+'</button>' +
+    '</p><button class="ghost" id="budAuto">מילוי לפי '+prevLabel+'</button></div>';
+
+  const rows = CATS.map(cat=>{
+    const c = budget().cats[cat] || {type:"pct", val:""};
+    const limit = limitOf(cat);
+    const spent = spentOn(cat, p);
+    const pct = limit ? Math.min(100, Math.round(spent/limit*100)) : 0;
+    const over = limit !== null && spent > limit;
+    const near = limit !== null && !over && spent >= limit*0.8;
+    const cls = limit === null ? " unset" : over ? " over" : near ? " near" : "";
+
+    const status = limit === null
+      ? (spent ? 'הוצאת <b>'+money(spent)+'</b> בלי תקציב' : 'בלי תקציב')
+      : over
+        ? 'הוצאת <b>'+money(spent)+'</b> · חריגה של <b>'+money(spent-limit)+'</b>'
+        : 'הוצאת <b>'+money(spent)+'</b> · נשאר <b>'+money(limit-spent)+'</b>';
+
+    return '<div class="budrow'+cls+'">'+
+      '<div class="btop">'+
+        '<span class="bn">'+cat+'</span>'+
+        '<input type="text" inputmode="decimal" value="'+(c.val === "" ? "" : c.val)+'" placeholder="0" data-bcat="'+esc(cat)+'" aria-label="תקציב ל'+cat+'">'+
+        '<select data-btype="'+esc(cat)+'" aria-label="יחידת התקציב">'+
+          '<option value="pct"'+(c.type!=="fix"?" selected":"")+'>% מהבסיס</option>'+
+          '<option value="fix"'+(c.type==="fix"?" selected":"")+'>₪ קבוע</option>'+
+        '</select>'+
+        '<span class="blimit">'+(limit === null ? "—" : "= "+money(Math.round(limit)))+'</span>'+
+      '</div>'+
+      '<div class="bbot">'+
+        '<span class="btrack"><i style="width:'+pct+'%"></i></span>'+
+        '<span class="bs">'+status+'</span>'+
+      '</div></div>';
+  }).join("");
+
+  const unallocated = base - t.limit;
+  const foot =
+    '<div class="budfoot">'+
+      '<span class="ft">סך התקציב <b>'+money(Math.round(t.limit))+'</b> · הוצאת <b>'+money(t.spent)+'</b></span>'+
+      '<span class="left'+(unallocated < 0 ? " minus" : "")+'">'+
+        (unallocated < 0
+          ? 'חרגת מהבסיס ב־<b>'+money(-unallocated)+'</b>'
+          : 'נשאר לך אחרי כל התקציבים <b>'+money(Math.round(unallocated))+'</b>')+
+      '</span>'+
+    '</div>';
+
+  area.innerHTML = '<div class="budcard">' + head + '<div>' + rows + '</div>' + foot + '</div>';
+}
+
+function renderList(){
+  const area = $("#listArea");
+  const items = itemsOf(periodOf(0));
+
+  if(tab === "bud"){
+    renderBudget();
+    return;
+  }
+
+  if(tab === "rec"){
+    const withRec = items.filter(i=>i.receipt);
+    if(!withRec.length){
+      area.innerHTML = '<div class="empty"><strong>אין כאן קבלות עדיין</strong>כל קבלה שתצרפי להוצאה או להכנסה תופיע כאן.</div>';
+      return;
+    }
+    // a quiet list, not a wall of thumbnails — a busy month has a lot of these
+    const card = i => {
+      const pv = i.receipt.mime.startsWith("image/")
+        ? '<img class="rthumb" src="'+i.receipt.data+'" alt="">'
+        : '<span class="rthumb pdf">PDF</span>';
+      return '<button class="recrow '+i.type+'" data-open="'+i.id+'">'+
+        '<span class="rdate">'+fmtDate(i.date)+'</span>'+
+        '<span class="rname">'+esc(i.title || "בלי תיאור")+
+          (i.desc ? ' <em>'+esc(i.desc)+'</em>' : "")+'</span>'+
+        '<span class="ramt">'+money(i.amount)+'</span>'+ pv +'</button>';
+    };
+    const outs = withRec.filter(i=>i.type === "out");
+    const ins  = withRec.filter(i=>i.type === "in");
+    const shown = recSide === "out" ? outs : ins;
+
+    // two sides side by side, one open at a time — a month's worth of receipts
+    // is too long to scroll past to reach the other kind
+    area.innerHTML =
+      '<div class="rechead">'+
+        '<div class="recswitch" role="group" aria-label="סוג הקבלות">'+
+          '<button data-recside="out" aria-pressed="'+(recSide==="out")+'">הוצאות <b>'+outs.length+'</b></button>'+
+          '<button data-recside="in" aria-pressed="'+(recSide==="in")+'">הכנסות <b>'+ins.length+'</b></button>'+
+        '</div>'+
+        '<button class="ghost" id="recCsv">ייצוא הקבלות לגיליון</button>'+
+      '</div>' +
+      (shown.length
+        ? '<div class="reclist">'+shown.map(card).join("")+'</div>'
+        : '<p class="empty-mini">אין קבלות של '+(recSide==="out"?"הוצאות":"הכנסות")+' ב'+labelOf(periodOf(0))+'.</p>');
+    return;
+  }
+
+  const rows = items.filter(i=>i.type===tab);
+  if(!rows.length){
+    area.innerHTML = tab === "out"
+      ? '<div class="empty"><strong>אין הוצאות בתקופה הזאת</strong>ההוצאה הראשונה נכנסת מהטופס למעלה.</div>'
+      : '<div class="empty"><strong>אין הכנסות בתקופה הזאת</strong>ההכנסה הראשונה נכנסת מהכפתור למעלה.</div>';
+    return;
+  }
+  area.innerHTML = '<div class="rows">' + rows.map(i=>{
+    const thumb = i.receipt
+      ? '<button class="thumb" data-open="'+i.id+'" title="פתיחת הקבלה">'+
+        (i.receipt.mime.startsWith("image/") ? '<img src="'+i.receipt.data+'" alt="קבלה">' : 'PDF')+'</button>'
+      : '<span class="noreceipt"></span>';
+    const tag = i.type === "out" ? '<span class="tag">'+esc(i.cat || CATS[0])+'</span>' : "";
+    const p = payOf(i);
+    const paytag = i.type === "out" ? ""
+      : (p === "instal" && i.instal)
+        ? '<span class="tag">'+i.instal.n+' × '+money(Math.round(i.amount/i.instal.n*100)/100)+'</span>'
+        : '<span class="tag">'+PAY_TAG[p]+'</span>';
+    return '<div class="row '+i.type+'">'+
+      '<span class="when">'+fmtDate(i.date)+'</span>'+
+      '<span class="what">'+esc(i.title || "בלי תיאור")+
+        (i.desc ? ' <em class="wdesc">'+esc(i.desc)+'</em>' : "")+'</span>'+
+      tag + paytag +
+      '<span class="sum">'+(i.type==="out"?"−":"+")+money(i.amount).replace("−","")+'</span>'+
+      thumb +
+      '<button class="act" data-edit="'+i.id+'" title="עריכה">✎</button>'+
+      '<button class="act" data-del="'+i.id+'" title="מחיקה">✕</button>'+
+      '</div>';
+  }).join("") + '</div>';
+}
+
+/* ---------------- form ---------------- */
+function setTab(t){
+  tab = t;
+  ["out","in","bud","rec"].forEach(k => $("#tab-"+k).setAttribute("aria-selected", String(k===t)));
+  const entry = (t === "out" || t === "in");
+  $("#btnNew").hidden = !entry;
+  if(entry){
+    $("#btnNew").textContent = t === "out" ? "+ הוצאה חדשה" : "+ הכנסה חדשה";
+    $("#btnNew").classList.toggle("in", t === "in");
+    $("#addForm").className = t === "out" ? "is-out" : "is-in";
+    $("#wrapCat").hidden = t !== "out";
+    $("#wrapPay").hidden = t !== "in";         // an expense is simply money out
+    $("#wrapInstalOn").hidden = t !== "out";
+    $("#lblTitle").textContent = t === "out" ? "על מה" : "לקוח";
+    $("#fTitle").placeholder = t === "out" ? "למשל: חומרי גלם" : "למשל: דפנה כהן";
+    $("#lblDesc").textContent = t === "out" ? "הערות" : "תיאור";
+    $("#fDesc").placeholder = t === "out" ? "למשל: לקנות שוב בעוד חודשיים" : "למשל: חבילת 4 טיפולים";
+    $("#fPay").innerHTML = PAY_IN.map(p=>'<option value="'+p[0]+'">'+p[1]+'</option>').join("");
+    resetForm();
+  }
+  closeForm();
+  renderList();
+}
+
+/* the form lives in a popup, so neither adding nor editing moves her off the page */
+function openForm(title){
+  $("#sheetTitle").textContent = title;
+  $("#sheet").hidden = false;
+  document.body.style.overflow = "hidden";
+}
+function closeForm(){
+  $("#sheet").hidden = true;
+  document.body.style.overflow = "";
+}
+$("#btnNew").addEventListener("click", ()=>{
+  resetForm();
+  openForm(tab === "out" ? "הוצאה חדשה" : "הכנסה חדשה");
+  $("#fTitle").focus();
+});
+$("#sheetClose").addEventListener("click", ()=>{ resetForm(); closeForm(); });
+$("#sheet").addEventListener("click", e => { if(e.target.id === "sheet"){ resetForm(); closeForm(); } });
+
+function resetForm(){
+  editing = null; pendingFile = null;
+  $("#addForm").reset();
+  $("#fDate").value = iso(new Date());
+  $("#fPay").value = "bank";
+  $("#fInstalOn").checked = false;
+  $("#fInstal").value = 3;
+  $("#fileName").textContent = "צירוף קבלה";
+  $("#fileLabel").classList.remove("has");
+  $("#saveBtn").textContent = "הוספה";
+  syncInstal();
+}
+
+/* the instalment field only exists when it is relevant — otherwise it is noise */
+function syncInstal(){
+  const on = tab === "out" ? $("#fInstalOn").checked : $("#fPay").value === "instal";
+  $("#wrapInstal").hidden = !on;
+  const note = $("#instalNote");
+  if(!on){ note.hidden = true; return; }
+  const total = parseFloat(String($("#fAmount").value).replace(/[^\d.]/g,""));
+  const n = Math.min(36, Math.max(2, parseInt($("#fInstal").value || "2", 10)));
+  note.hidden = false;
+  if(!isFinite(total) || total <= 0){
+    note.innerHTML = "רשמי את הסכום <b>הכולל</b> של העסקה ואני אחלק אותו לתשלומים חודשיים.";
+    return;
+  }
+  const per = money(Math.round(total/n*100)/100);
+  note.innerHTML = tab === "out"
+    ? "יירשמו <b>"+n+"</b> תשלומים של <b>"+per+"</b>, חודש אחרי חודש, החל מהתאריך שבחרת."
+    : "ההכנסה תירשם במלואה בתאריך שבחרת, והכסף ייכנס ב־<b>"+n+"</b> תשלומים של <b>"+per+"</b> — חודש אחרי חודש.";
+}
+$("#fPay").addEventListener("change", syncInstal);
+$("#fInstalOn").addEventListener("change", syncInstal);
+$("#fInstal").addEventListener("input", syncInstal);
+$("#fAmount").addEventListener("input", syncInstal);
+
+function startEdit(id){
+  const it = db.items.find(x=>x.id===id);
+  if(!it) return;
+  setTab(it.type);
+  editing = id;
+  $("#fDate").value = it.date;
+  $("#fTitle").value = it.title || "";
+  $("#fAmount").value = it.amount;
+  if(it.type==="out") $("#fCat").value = it.cat || CATS[0];
+  else $("#fPay").value = payOf(it);
+  $("#fDesc").value = it.desc || "";
+  if(it.instal) $("#fInstal").value = it.instal.n;
+  pendingFile = it.receipt || null;
+  $("#fileName").textContent = it.receipt ? "קבלה מצורפת" : "צירוף קבלה";
+  $("#fileLabel").classList.toggle("has", !!it.receipt);
+  $("#saveBtn").textContent = "שמירה";
+  $("#fInstalOn").checked = false;     // an existing row is one payment, not a new split
+  $("#wrapInstal").hidden = true;
+  $("#instalNote").hidden = true;
+  openForm(it.type === "out" ? "עריכת הוצאה" : "עריכת הכנסה");
+  $("#fTitle").focus();
+}
+
+/* same day next month, without spilling into the month after when the day is short */
+function addMonths(dateStr, k){
+  const [y,m,d] = dateStr.split("-").map(Number);
+  const lastDay = new Date(y, m-1+k+1, 0).getDate();
+  return iso(new Date(y, m-1+k, Math.min(d, lastDay)));
+}
+
+$("#addForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const amount = parseFloat(String($("#fAmount").value).replace(/[^\d.-]/g,""));
+  if(!isFinite(amount) || amount <= 0){ toast("צריך סכום גדול מאפס."); $("#fAmount").focus(); return; }
+  const rec = {
+    id: editing || uid(),
+    type: tab,
+    date: $("#fDate").value || iso(new Date()),
+    title: $("#fTitle").value.trim(),
+    amount: amount,
+    receipt: pendingFile
+  };
+  if(tab === "out") rec.cat = $("#fCat").value;
+  else rec.pay = $("#fPay").value;
+  const note = $("#fDesc").value.trim();
+  if(note) rec.desc = note;
+
+  let clearedDemo = false, spread = 0;
+  if(editing){
+    db.items[db.items.findIndex(x=>x.id===editing)] = rec;
+  } else {
+    // the sample rows are scaffolding: they step aside for the first real record
+    if(db.items.some(x=>x.demo)){
+      db.items = db.items.filter(x=>!x.demo);
+      db.demo = false; db.opening = 0;
+      clearedDemo = true;
+    }
+    if(tab === "in" && rec.pay === "instal"){
+      // one deal, one row — only the cash arrives in pieces
+      rec.instal = {n: Math.min(36, Math.max(2, parseInt($("#fInstal").value || "2", 10)))};
+      db.items.push(rec);
+      spread = -rec.instal.n;
+    } else if(tab === "out" && $("#fInstalOn").checked){
+      // one purchase, one row per monthly payment, carried forward automatically
+      const n = Math.min(36, Math.max(2, parseInt($("#fInstal").value || "2", 10)));
+      const per = Math.round(amount / n * 100) / 100;
+      const group = uid();
+      for(let k = 0; k < n; k++){
+        db.items.push(Object.assign({}, rec, {
+          id: k === 0 ? rec.id : uid(),
+          date: addMonths(rec.date, k),
+          amount: k === n-1 ? Math.round((amount - per*(n-1))*100)/100 : per,
+          title: (rec.title || "הוצאה") + " (תשלום " + (k+1) + " מתוך " + n + ")",
+          instal: {group:group, i:k+1, n:n},
+          receipt: k === 0 ? rec.receipt : null
+        }));
+      }
+      spread = n;
+    } else {
+      db.items.push(rec);
+    }
+  }
+  if(save()){
+    const said = editing ? "עודכן"
+      : spread > 0 ? "נרשמו " + spread + " תשלומים, אחד לכל חודש"
+      : spread < 0 ? "ההכנסה נרשמה במלואה, והכסף ייכנס ב־" + (-spread) + " תשלומים"
+      : (tab === "out" ? "ההוצאה נרשמה" : "ההכנסה נרשמה");
+    toast(said + (clearedDemo ? " · רישומי הדוגמה נמחקו, מכאן זה שלך" : ""));
+  }
+
+  const [y,m] = rec.date.split("-").map(Number);
+  if(view.scope === "month" && (y !== view.y || m-1 !== view.m)){ view.y = y; view.m = m-1; }
+  if(view.scope === "year" && y !== view.y){ view.y = y; }
+  resetForm();
+  closeForm();
+  renderAll();
+});
+
+$("#cancelBtn").addEventListener("click", ()=>{ resetForm(); closeForm(); });
+
+$("#fFile").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  if(file.type.startsWith("image/")){
+    compress(file).then(data => {
+      pendingFile = {name:file.name, mime:"image/jpeg", data:data};
+      $("#fileName").textContent = "קבלה מצורפת";
+      $("#fileLabel").classList.add("has");
+    });
+  } else if(file.type === "application/pdf"){
+    if(file.size > 2500000){ toast("ה‑PDF כבד מדי (עד 2.5MB)."); return; }
+    const r = new FileReader();
+    r.onload = () => {
+      pendingFile = {name:file.name, mime:file.type, data:r.result};
+      $("#fileName").textContent = "קבלה מצורפת";
+      $("#fileLabel").classList.add("has");
+    };
+    r.readAsDataURL(file);
+  } else {
+    toast("אפשר לצרף תמונה או PDF.");
+  }
+});
+
+function compress(file){
+  return new Promise(res => {
+    const r = new FileReader();
+    r.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 1400;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.width*scale); c.height = Math.round(img.height*scale);
+        const ctx = c.getContext("2d");
+        ctx.fillStyle = "#fff"; ctx.fillRect(0,0,c.width,c.height);
+        ctx.drawImage(img,0,0,c.width,c.height);
+        res(c.toDataURL("image/jpeg", 0.72));
+      };
+      img.onerror = () => res(r.result);
+      img.src = r.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+/* ---------------- list actions ---------------- */
+/* budget editing: typing updates the figures in place, so the field keeps focus */
+$("#listArea").addEventListener("input", e => {
+  const inp = e.target.closest("[data-bcat]");
+  if(!inp) return;
+  const cat = inp.dataset.bcat;
+  const raw = String(inp.value).replace(/[^\d.]/g,"");
+  const val = raw === "" ? "" : parseFloat(raw);
+  const cur = budget().cats[cat] || {type:"pct"};
+  budget().cats[cat] = {type:cur.type || "pct", val:(val === "" || !isFinite(val)) ? "" : val};
+  save();
+  refreshBudRow(cat);
+  refreshBudFoot();
+});
+
+$("#listArea").addEventListener("change", e => {
+  const sel = e.target.closest("[data-btype]");
+  if(!sel) return;
+  const cat = sel.dataset.btype;
+  const cur = budget().cats[cat] || {val:""};
+  budget().cats[cat] = {type:sel.value, val:cur.val};
+  save();
+  refreshBudRow(cat);
+  refreshBudFoot();
+});
+
+function refreshBudRow(cat){
+  const inp = $('[data-bcat="'+cat.replace(/"/g,'\\"')+'"]');
+  if(!inp) return;
+  const row = inp.closest(".budrow");
+  const limit = limitOf(cat);
+  const spent = spentOn(cat, periodOf(0));
+  const pct = limit ? Math.min(100, Math.round(spent/limit*100)) : 0;
+  const over = limit !== null && spent > limit;
+  const near = limit !== null && !over && spent >= limit*0.8;
+  row.classList.toggle("unset", limit === null);
+  row.classList.toggle("over", over);
+  row.classList.toggle("near", near);
+  row.querySelector(".blimit").textContent = limit === null ? "—" : "= " + money(Math.round(limit));
+  row.querySelector(".btrack i").style.width = pct + "%";
+  row.querySelector(".bs").innerHTML = limit === null
+    ? (spent ? 'הוצאת <b>'+money(spent)+'</b> בלי תקציב' : 'בלי תקציב')
+    : over
+      ? 'הוצאת <b>'+money(spent)+'</b> · חריגה של <b>'+money(spent-limit)+'</b>'
+      : 'הוצאת <b>'+money(spent)+'</b> · נשאר <b>'+money(limit-spent)+'</b>';
+}
+
+function refreshBudFoot(){
+  const foot = $(".budfoot");
+  if(!foot) return;
+  const t = budgetTotals(periodOf(0));
+  const un = budgetBase() - t.limit;
+  foot.querySelector(".ft").innerHTML =
+    'סך התקציב <b>'+money(Math.round(t.limit))+'</b> · הוצאת <b>'+money(t.spent)+'</b>';
+  const left = foot.querySelector(".left");
+  left.classList.toggle("minus", un < 0);
+  left.innerHTML = un < 0
+    ? 'חרגת מהבסיס ב־<b>'+money(-un)+'</b>'
+    : 'נשאר לך אחרי כל התקציבים <b>'+money(Math.round(un))+'</b>';
+  renderKpis();
+}
+
+$("#listArea").addEventListener("click", e => {
+  const side = e.target.closest("[data-recside]");
+  if(side){ recSide = side.dataset.recside; renderList(); return; }
+  if(e.target.id === "recCsv"){ exportReceipts(); return; }
+  if(e.target.id === "budAuto"){
+    const prev = periodOf(-1);
+    CATS.forEach(c=>{
+      const spent = spentOn(c, prev);
+      if(spent > 0) budget().cats[c] = {type:"fix", val:Math.round(spent)};
+    });
+    save(); renderBudget(); renderKpis();
+    toast("מילאתי לפי " + shortLabelOf(prev) + ". אפשר לשנות כל שורה.");
+    return;
+  }
+  if(e.target.id === "budBase"){
+    if(typeof budget().base === "number"){
+      budget().base = "auto";
+      save(); renderBudget(); renderKpis();
+      return;
+    }
+    ask({title:"על איזה סכום לבסס את התקציב?",
+         sub:"במקום החישוב האוטומטי לפי מה שנכנס בחודש שעבר.",
+         input:true, value:Math.round(budgetBase()), yes:"שמירה"})
+      .then(v=>{
+        if(v === null) return;
+        const n = parseFloat(String(v).replace(/[^\d.-]/g,""));
+        if(!isFinite(n) || n < 0){ toast("צריך מספר."); return; }
+        budget().base = n;
+        save(); renderBudget(); renderKpis();
+      });
+    return;
+  }
+});
+
+$("#listArea").addEventListener("click", e => {
+  const open = e.target.closest("[data-open]");
+  const edit = e.target.closest("[data-edit]");
+  const del  = e.target.closest("[data-del]");
+  if(open) return openReceipt(open.dataset.open);
+  if(edit) return startEdit(edit.dataset.edit);
+  if(del){
+    const it = db.items.find(x=>x.id===del.dataset.del);
+    if(!it) return;
+    const extra = (it.instal && it.type === "out")
+      ? " זה תשלום אחד מתוך "+it.instal.n+", שאר התשלומים יישארו." : "";
+    ask({title:"למחוק את " + (it.title || "הרישום") + "?",
+         sub: money(it.amount) + " · " + fmtDate(it.date) + " — אי אפשר לשחזר." + extra,
+         yes:"כן, למחוק"})
+      .then(ok=>{
+        if(!ok) return;
+        db.items = db.items.filter(x=>x.id!==it.id);
+        save(); renderAll(); toast("נמחק");
+      });
+  }
+});
+
+function openReceipt(id){
+  const it = db.items.find(x=>x.id===id);
+  if(!it || !it.receipt) return;
+  $("#lbBody").innerHTML = it.receipt.mime.startsWith("image/")
+    ? '<img src="'+it.receipt.data+'" alt="קבלה של '+esc(it.title)+'">'
+    : '<embed src="'+it.receipt.data+'" type="application/pdf">';
+  $("#lbTitle").textContent = (it.title || "קבלה") + " · " + fmtDate(it.date) + " · " + money(it.amount);
+  const a = $("#lbDownload");
+  a.href = it.receipt.data;
+  a.setAttribute("download", it.receipt.name || "receipt");
+  $("#lb").classList.add("on");
+  $("#lbClose").focus();
+}
+$("#lbClose").addEventListener("click", ()=>$("#lb").classList.remove("on"));
+$("#lb").addEventListener("click", e => { if(e.target.id === "lb") $("#lb").classList.remove("on"); });
+document.addEventListener("keydown", e => {
+  if(e.key !== "Escape") return;
+  $("#lb").classList.remove("on");
+  closeAsk(false);
+  if(!$("#sheet").hidden){ resetForm(); closeForm(); }
+});
+
+/* ---------------- period nav ---------------- */
+function step(dir){
+  const p = periodOf(dir);
+  view.y = p.y; view.m = p.m;
+  renderAll();
+}
+$("#prev").addEventListener("click", ()=>step(-1));
+$("#next").addEventListener("click", ()=>step(1));
+
+/* however far she has browsed, the month title is the way back to today */
+function goToToday(){
+  const now = new Date();
+  const away = view.y !== now.getFullYear() || (view.scope === "month" && view.m !== now.getMonth());
+  view.y = now.getFullYear(); view.m = now.getMonth();
+  renderAll();
+  if(away) toast(view.scope === "year" ? "חזרנו לשנה הנוכחית" : "חזרנו לחודש הנוכחי");
+}
+$("#periodLabel").addEventListener("click", goToToday);
+$("#periodLabel").addEventListener("keydown", e => {
+  if(e.key === "Enter" || e.key === " "){ e.preventDefault(); goToToday(); }
+});
+$("#sc-month").addEventListener("click", ()=>{ view.scope="month"; setScope(); });
+$("#sc-year").addEventListener("click", ()=>{ view.scope="year"; setScope(); });
+function setScope(){
+  $("#sc-month").setAttribute("aria-pressed", String(view.scope==="month"));
+  $("#sc-year").setAttribute("aria-pressed", String(view.scope==="year"));
+  renderAll();
+}
+["out","in","bud","rec"].forEach(k => $("#tab-"+k).addEventListener("click", ()=>setTab(k)));
+
+/* ---------------- name ---------------- */
+$("#bizName").addEventListener("blur", e => {
+  db.name = e.target.textContent.trim() || "העסק שלי";
+  e.target.textContent = db.name;
+  save();
+});
+$("#bizName").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); e.target.blur(); } });
+
+/* ---------------- export / backup ---------------- */
+function download(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+
+$("#btnCsv").addEventListener("click", ()=>{
+  const p = periodOf(0), f = figures(p);
+  const startBal = balanceBefore(p), endBal = startBal + f.profit;
+  const rows = [
+    ["סיכום", labelOf(p)],
+    ["יתרת פתיחה", db.opening || 0],
+    ["בחשבון בתחילת התקופה", Math.round(startBal)],
+    ["סך הכל הכנסות", f.income],
+    ["נכנס בפועל", f.actual],
+    ["סך הכל הוצאות", f.expense],
+    ["רווח", f.profit],
+    ["בחשבון בסוף התקופה", Math.round(endBal)],
+    [],
+    ["סוג","תאריך","לקוח / על מה","תיאור","קטגוריה","סכום","אמצעי תשלום","קבלה"]
+  ];
+  itemsOf(p).slice().reverse().forEach(i=>{
+    rows.push([
+      i.type === "out" ? "הוצאה" : "הכנסה",
+      i.date, i.title || "", i.desc || "", i.cat || "",
+      i.amount, i.type === "in" ? PAY_TAG[payOf(i)] : "", i.receipt ? "כן" : "לא"
+    ]);
+  });
+  const csv = "﻿" + rows.map(r => r.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+  download(new Blob([csv],{type:"text/csv;charset=utf-8"}), "הכספים-"+labelOf(p)+".csv");
+  toast("הקובץ ירד, עם היתרות בראש הדף.");
+});
+
+/* just the rows that have a receipt attached — the list an accountant asks for */
+function exportReceipts(){
+  const p = periodOf(0);
+  const list = itemsOf(p).filter(i=>i.receipt).slice().reverse();
+  if(!list.length){ toast("אין קבלות בתקופה הזאת."); return; }
+  const rows = [["סוג","תאריך","לקוח / על מה","תיאור","קטגוריה","סכום","אמצעי תשלום","שם הקובץ"]];
+  list.forEach(i=>{
+    rows.push([
+      i.type === "out" ? "הוצאה" : "הכנסה",
+      i.date, i.title || "", i.desc || "", i.cat || "",
+      i.amount, i.type === "in" ? PAY_TAG[payOf(i)] : "", i.receipt.name || ""
+    ]);
+  });
+  const csv = "﻿" + rows.map(r => r.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+  download(new Blob([csv],{type:"text/csv;charset=utf-8"}), "קבלות-"+labelOf(p)+".csv");
+  toast("ירדו " + list.length + " שורות. אפשר לגרור את הקובץ לגוגל שיטס.");
+}
+
+/* One file that carries the app and the records together, so moving to another
+   computer is a double click rather than a restore procedure. */
+$("#btnClone").addEventListener("click", ()=>{
+  const old = document.getElementById("seedData");
+  if(old) old.remove();
+  // the rendered lists hold copies of the receipt images; empty them so the file stays lean
+  ["kpis","bars","pie","listArea"].forEach(id=>{ const el = $("#"+id); if(el) el.innerHTML = ""; });
+  // the stamp lets the receiving copy tell a fresh export from one it already took
+  const payload = {stamp: Date.now(), made: iso(new Date()), data: db};
+  const seed = '<script id="seedData" type="application/json">' +
+               JSON.stringify(payload).replace(/<\//g, "<\\/") + '<\/script>';
+  const html = "<!doctype html>\n" +
+               document.documentElement.outerHTML.replace("</head>", seed + "</head>");
+  renderAll();
+  download(new Blob([html],{type:"text/html;charset=utf-8"}), "הכספים-של-העסק.html");
+  toast("קובץ אחד עם הכל בפנים. פתחי אותו במחשב השני.");
+});
+
+$("#btnBackup").addEventListener("click", ()=>{
+  download(new Blob([JSON.stringify(db)],{type:"application/json"}), "גיבוי-"+iso(new Date())+".json");
+  toast("הגיבוי ירד. שמרי אותו במקום בטוח.");
+});
+
+$("#btnRestore").addEventListener("click", ()=>$("#restoreFile").click());
+$("#restoreFile").addEventListener("change", e => {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    let data;
+    try{
+      data = JSON.parse(r.result);
+      if(!data || !Array.isArray(data.items)) throw 0;
+    }catch(err){ toast("הקובץ הזה לא קובץ גיבוי תקין."); e.target.value = ""; return; }
+    ask({title:"לשחזר מהגיבוי?",
+         sub:"כל מה שרשום עכשיו (" + db.items.length + " רישומים) יוחלף במה שבקובץ.",
+         yes:"כן, לשחזר"})
+      .then(ok=>{
+        e.target.value = "";
+        if(!ok) return;
+        db = data; save();
+        $("#bizName").textContent = db.name || "העסק שלי";
+        renderAll(); toast("שוחזר");
+      });
+  };
+  r.readAsText(f);
+});
+
+/* ---------------- sample data, first run only ---------------- */
+function dline(g,x1,y,x2){
+  g.save(); g.strokeStyle="#CFCDC7"; g.setLineDash([4,5]); g.lineWidth=1;
+  g.beginPath(); g.moveTo(x1,y+.5); g.lineTo(x2,y+.5); g.stroke(); g.restore();
+}
+function agorot(n){ return "₪" + n.toLocaleString("he-IL",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function drawReceipt(o){
+  const W=560, H=790, L=62, R=W-62;
+  const c=document.createElement("canvas"); c.width=W; c.height=H;
+  const g=c.getContext("2d");
+  g.fillStyle="#EDEBE5"; g.fillRect(0,0,W,H);
+  g.fillStyle="#FFFFFF"; g.fillRect(26,20,W-52,H-40);
+
+  g.textAlign="center"; g.fillStyle="#141414";
+  g.font='700 31px Assistant, "Arial Hebrew", sans-serif';
+  g.fillText(o.shop, W/2, 92);
+  g.font='15px Assistant, "Arial Hebrew", sans-serif'; g.fillStyle="#8C8A85";
+  g.fillText(o.sub, W/2, 120);
+  g.fillText(o.doc, W/2, 146);
+  dline(g,L,174,R);
+
+  let y=216;
+  o.lines.forEach(ln=>{
+    g.fillStyle="#141414";
+    g.textAlign="right"; g.font='18px Assistant, "Arial Hebrew", sans-serif';
+    g.fillText(ln[0], R, y);
+    g.textAlign="left"; g.font="17px monospace";
+    g.fillText(agorot(ln[1]), L, y);
+    y += 37;
+  });
+
+  y += 8; dline(g,L,y,R); y += 40;
+  g.fillStyle="#8C8A85"; g.textAlign="right"; g.font='16px Assistant, "Arial Hebrew", sans-serif';
+  g.fillText('מזה מע"מ 18%', R, y);
+  g.textAlign="left"; g.font="16px monospace"; g.fillText(agorot(o.total - o.total/1.18), L, y);
+
+  y += 46;
+  g.fillStyle="#141414"; g.textAlign="right"; g.font='700 25px Assistant, "Arial Hebrew", sans-serif';
+  g.fillText('סה"כ לתשלום', R, y);
+  g.textAlign="left"; g.font="700 25px monospace"; g.fillText(agorot(o.total), L, y);
+
+  y += 30; dline(g,L,y,R); y += 34;
+  g.fillStyle="#8C8A85"; g.font='15px Assistant, "Arial Hebrew", sans-serif';
+  g.textAlign="right"; g.fillText(o.paid, R, y);
+  g.textAlign="left"; g.font="15px monospace"; g.fillText(o.when, L, y);
+
+  let bx = L; const by = H-150;
+  g.fillStyle="#141414";
+  while(bx < R-2){
+    const w = 1 + Math.floor(Math.random()*3);
+    if(Math.random() > .35) g.fillRect(bx, by, w, 56);
+    bx += w + 1 + Math.floor(Math.random()*3);
+  }
+  g.textAlign="center"; g.fillStyle="#8C8A85"; g.font="14px monospace";
+  g.fillText(o.code, W/2, by+80);
+
+  // sample stamp, so this can never pass for a real document
+  g.save();
+  g.translate(W/2, H*0.46); g.rotate(-0.3);
+  g.textAlign="center"; g.fillStyle="rgba(255,111,145,.16)";
+  g.font='700 108px Assistant, "Arial Hebrew", sans-serif';
+  g.fillText("דוגמה", 0, 0);
+  g.restore();
+
+  return c.toDataURL("image/jpeg", .74);
+}
+function rec(name,o){ return {name:name+".jpg", mime:"image/jpeg", data:drawReceipt(o)}; }
+
+function seedDemo(){
+  const now = new Date(), Y = now.getFullYear(), M = now.getMonth(), D = now.getDate();
+  const day = f => iso(new Date(Y, M, Math.min(D, Math.max(1, Math.round(D*f)))));
+  const dt  = f => day(f).split("-").reverse().join("/");
+  const code = () => String(Math.floor(Math.random()*9e11)+1e11);
+  const items = [];
+
+  items.push({id:uid(), type:"out", date:day(.08), title:"קורס השתלמות מקצועית", cat:"קורסים", amount:2400,
+    receipt: rec("קורס", {shop:"מכללת רימון להשתלמויות", sub:"הברזל 12, תל אביב", doc:'ע.מ. 514872360  ·  חשבונית מס 4471',
+      lines:[["קורס עיסוי רקמות עמוק",2100],["ערכת חומרי לימוד",300]], total:2400,
+      paid:"שולם בהעברה בנקאית", when:dt(.08), code:code()})});
+
+  items.push({id:uid(), type:"out", date:day(.3), title:"שמנים וחומרי טיפול", cat:"ספקים", amount:638,
+    receipt: rec("ספקים", {shop:"אורגניקה ספקים", sub:"רח' התעשייה 4, חולון", doc:'ע.מ. 302881947  ·  חשבונית מס 90233',
+      lines:[["שמן שקדים מתוקים 1 ל' × 2",180],["שמן אתרי לבנדר 250 מ\"ל",148],["מגבות חד פעמיות × 3 חבילות",210],["ג'ל ניקוי ידיים",100]], total:638,
+      paid:"שולם בכרטיס אשראי ‎••••4128", when:dt(.3), code:code()})});
+
+  items.push({id:uid(), type:"out", date:day(.55), title:"מיטת טיפולים מתכווננת", cat:"ציוד", amount:1890,
+    receipt: rec("ציוד", {shop:"ביומד ציוד לקליניקה", sub:"דרך העצמאות 88, חיפה", doc:'ע.מ. 511903774  ·  חשבונית מס 12058',
+      lines:[["מיטת טיפולים מתכווננת",1690],["הרכבה במקום",120],["משלוח",80]], total:1890,
+      paid:"לתשלום עד סוף החודש", when:dt(.55), code:code()})});
+
+  items.push({id:uid(), type:"out", date:day(.68), title:"פרסום ברשתות", cat:"שיווק", amount:380});
+
+  items.push({id:uid(), type:"in", date:day(.72), title:"מיכל ברנע", desc:"טיפולים ביום ראשון", amount:1450, pay:"cash",
+    receipt: rec("קבלה-142", {shop:db.name || "העסק שלי", sub:"קבלה על תשלום שהתקבל", doc:"קבלה מס' 142",
+      lines:[["טיפול 60 דק' × 4",1000],["טיפול 30 דק' × 2",450]], total:1450,
+      paid:"התקבל במזומן", when:dt(.72), code:code()})});
+
+  items.push({id:uid(), type:"in", date:day(.9), title:"קבוצת רעננה", desc:"סדנה קבוצתית", amount:2200, pay:"bank",
+    receipt: rec("קבלה-143", {shop:db.name || "העסק שלי", sub:"קבלה על תשלום שהתקבל", doc:"קבלה מס' 143",
+      lines:[["סדנה קבוצתית - 9 משתתפות",1980],["ערכות חומרים",220]], total:2200,
+      paid:"התקבל בהעברה בנקאית", when:dt(.9), code:code()})});
+
+  items.push({id:uid(), type:"in", date:day(1), title:"דפנה כהן", desc:"חבילת 4 טיפולים", amount:1400,
+              pay:"instal", instal:{n:4}});
+
+  // a lighter previous month, so the three-month chart has something to compare
+  const p = new Date(Y, M-1, 1), PY = p.getFullYear(), PM = p.getMonth();
+  const pday = d => iso(new Date(PY, PM, d));
+  items.push({id:uid(), type:"in",  date:pday(6),  title:"נועה שגיא", desc:"סדרת טיפולים", amount:920,  pay:"cash"});
+  items.push({id:uid(), type:"in",  date:pday(17), title:"קבוצת חיפה", desc:"סדנה", amount:2480, pay:"bank"});
+  items.push({id:uid(), type:"out", date:pday(2),  title:"כיסאות ואחסון לקליניקה", cat:"ציוד", amount:2400});
+  items.push({id:uid(), type:"out", date:pday(12), title:"חומרים", cat:"ספקים", amount:410});
+  items.push({id:uid(), type:"out", date:pday(21), title:"דלק ונסיעות", cat:"נסיעות", amount:260});
+
+  items.forEach(i=>{ i.demo = true; });
+  db.items = items;
+  db.demo = true;
+  db.opening = 6200;
+  save();
+}
+
+/* ---------------- init ---------------- */
+/* A file copied from another computer arrives with the records baked in. On an
+   empty browser it just loads; on one that already has records it asks first,
+   and never asks twice about the same copy. */
+let seedPending = null;
+const seedEl = document.getElementById("seedData");
+if(seedEl){
+  try{
+    const s = JSON.parse(seedEl.textContent);
+    const payload = (s && s.data) ? s : {stamp:0, made:"", data:s};
+    if(payload.data && Array.isArray(payload.data.items)){
+      if(localStorage.getItem(KEY) === null){
+        db = payload.data; db.seedStamp = payload.stamp; save();
+      } else if(db.seedStamp !== payload.stamp){
+        seedPending = payload;
+      }
+    }
+  }catch(e){}
+}
+
+$("#fCat").innerHTML = CATS.map(c=>'<option>'+c+'</option>').join("");
+$("#bizName").textContent = db.name || "העסק שלי";
+$("#fDate").value = iso(new Date());
+setTab("out");
+renderAll();
+
+if(localStorage.getItem(KEY) === null){
+  const go = () => { seedDemo(); renderAll(); };
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(go, go); else go();
+}
+
+if(seedPending){
+  const p = seedPending;
+  ask({title:"הקובץ הזה מגיע עם רישומים מהמחשב השני",
+       sub:"הועתקו ב־" + p.made.split("-").reverse().join("/") + " · " + p.data.items.length +
+           " רישומים. להחליף את מה שרשום כאן (" + db.items.length + " רישומים)?",
+       yes:"כן, להחליף"})
+    .then(ok=>{
+      if(ok){
+        db = p.data; db.seedStamp = p.stamp; save();
+        $("#bizName").textContent = db.name || "העסק שלי";
+        toast("עודכן מהמחשב השני.");
+      } else {
+        db.seedStamp = p.stamp; save();   // asked once, that is enough
+        toast("נשארנו עם מה שרשום כאן.");
+      }
+      renderAll();
+    });
+}
+
+})();
+</script>
+</body>
+</html>
