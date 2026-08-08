@@ -1634,6 +1634,53 @@ function dataUriBytes(uri){
 }
 const safeName = s => String(s).replace(/[\\\/:*?"<>|]/g, "-").slice(0, 60).trim();
 
+/* A real spreadsheet file rather than raw CSV: it opens on a double click in
+   Numbers, Excel or LibreOffice, and drags straight into Google Sheets. */
+function xlsxBlob(headers, rows, widths){
+  const enc = new TextEncoder();
+  const x = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const colLetter = n => String.fromCharCode(65 + n);
+  const cell = (n, r, v) =>
+    (typeof v === "number" && isFinite(v))
+      ? '<c r="'+colLetter(n)+r+'"><v>'+v+'</v></c>'
+      : '<c r="'+colLetter(n)+r+'" t="inlineStr"><is><t xml:space="preserve">'+x(v)+'</t></is></c>';
+  const row = (cells, r) => '<row r="'+r+'">' + cells.map((v,n)=>cell(n, r, v)).join("") + '</row>';
+
+  const cols = '<cols>' + widths.map((w,n)=>
+      '<col min="'+(n+1)+'" max="'+(n+1)+'" width="'+w+'" customWidth="1"/>').join("") + '</cols>';
+
+  const sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<sheetViews><sheetView rightToLeft="1" workbookViewId="0"/></sheetViews>' +
+    cols + '<sheetData>' +
+    row(headers, 1) + rows.map((r,i)=>row(r, i+2)).join("") +
+    '</sheetData></worksheet>';
+
+  const parts = [
+    {name:"[Content_Types].xml", body:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+      '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+      '</Types>'},
+    {name:"_rels/.rels", body:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+      '</Relationships>'},
+    {name:"xl/workbook.xml", body:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      '<sheets><sheet name="קבלות" sheetId="1" r:id="rId1"/></sheets></workbook>'},
+    {name:"xl/_rels/workbook.xml.rels", body:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' +
+      '</Relationships>'},
+    {name:"xl/worksheets/sheet1.xml", body:sheet}
+  ];
+  return parts.map(p=>({name:p.name, data:enc.encode(p.body)}));
+}
+
 /* the rows that have a receipt, plus the receipts themselves */
 function exportReceipts(){
   const p = periodOf(0);
@@ -1641,23 +1688,25 @@ function exportReceipts(){
   const list = itemsOf(p).filter(i=>i.receipt && i.type === recSide).slice().reverse();
   if(!list.length){ toast("אין קבלות של " + kind + " בתקופה הזאת."); return; }
 
-  const files = [], used = {};
-  const rows = [["תאריך","על מה","קטגוריה","סכום","קובץ הקבלה"]];
+  const photos = [], rows = [], used = {};
   list.forEach(i=>{
     const ext = i.receipt.mime === "application/pdf" ? "pdf" : "jpg";
     let base = i.date + " " + safeName(i.title || "קבלה");
     if(used[base]) base += " (" + (++used[base]) + ")"; else used[base] = 1;
     const fname = base + "." + ext;
-    files.push({name:"קבלות/" + fname, data:dataUriBytes(i.receipt.data)});
+    photos.push({name:"קבלות/" + fname, data:dataUriBytes(i.receipt.data)});
     rows.push([i.date, i.title || "", i.cat || "", i.amount, fname]);
   });
 
-  const csv = "﻿" + rows.map(r => r.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(",")).join("\r\n");
-  files.unshift({name:"קבלות " + kind + " " + labelOf(p) + ".csv",
-                 data:new TextEncoder().encode(csv)});
+  const sheetName = "קבלות " + kind + " " + labelOf(p) + ".xlsx";
+  const sheet = xlsxBlob(["תאריך","על מה","קטגוריה","סכום","קובץ הקבלה"], rows, [12,30,16,10,38]);
+  const inner = zipBlob(sheet);                     // the .xlsx is itself a zip
 
-  download(zipBlob(files), "קבלות " + kind + " " + labelOf(p) + ".zip");
-  toast(list.length + " קבלות ירדו יחד עם הגיליון.");
+  inner.arrayBuffer().then(ab=>{
+    download(zipBlob([{name:sheetName, data:new Uint8Array(ab)}].concat(photos)),
+             "קבלות " + kind + " " + labelOf(p) + ".zip");
+    toast(list.length + " קבלות ירדו יחד עם הגיליון.");
+  });
 }
 
 /* One file that carries the app and the records together, so moving to another
