@@ -1688,12 +1688,13 @@ function exportReceipts(){
   const list = itemsOf(p).filter(i=>i.receipt && i.type === recSide).slice().reverse();
   if(!list.length){ toast("אין קבלות של " + kind + " בתקופה הזאת."); return; }
 
-  const photos = [], rows = [], used = {};
-  list.forEach(i=>{
+  // the leading number keeps a row tied to its photo even if a zip tool on
+  // another machine mangles the Hebrew part of the name
+  const photos = [], rows = [];
+  list.forEach((i, n)=>{
     const ext = i.receipt.mime === "application/pdf" ? "pdf" : "jpg";
-    let base = i.date + " " + safeName(i.title || "קבלה");
-    if(used[base]) base += " (" + (++used[base]) + ")"; else used[base] = 1;
-    const fname = base + "." + ext;
+    const num = String(n + 1).padStart(2, "0");
+    const fname = num + " " + i.date + " " + safeName(i.title || "קבלה") + "." + ext;
     photos.push({name:"קבלות/" + fname, data:dataUriBytes(i.receipt.data)});
     rows.push([i.date, i.title || "", i.cat || "", i.amount, fname]);
   });
