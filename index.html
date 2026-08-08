@@ -246,9 +246,12 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
 .recswitch button b{font-family:var(--mono);font-weight:600;font-size:12.5px;opacity:.75;margin-inline-start:3px}
 .recswitch button[aria-pressed="true"]{background:var(--ink);color:var(--white)}
 .reclist{background:var(--white);border-radius:var(--r);overflow:hidden}
-.recrow{display:flex;align-items:center;gap:12px;width:100%;text-align:start;background:none;border:0;border-bottom:1px solid var(--line);padding:9px 20px;font-family:inherit;transition:background .12s}
+.recrow{display:flex;align-items:center;border-bottom:1px solid var(--line);padding-inline-end:12px;transition:background .12s}
 .recrow:last-child{border-bottom:0}
 .recrow:hover{background:#FFF8FA}
+.recmain{flex:1;min-width:0;display:flex;align-items:center;gap:12px;text-align:start;background:none;border:0;padding:9px 20px;font-family:inherit}
+.recrow .act{opacity:.28}
+.recrow:hover .act{opacity:.6}
 .rdate{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);width:48px;flex:none}
 .rname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;color:var(--ink)}
 .rname em{font-style:normal;color:var(--ink-2);font-size:13.5px}
@@ -1048,11 +1051,15 @@ function renderList(){
       const pv = i.receipt.mime.startsWith("image/")
         ? '<img class="rthumb" src="'+i.receipt.data+'" alt="">'
         : '<span class="rthumb pdf">PDF</span>';
-      return '<button class="recrow '+i.type+'" data-open="'+i.id+'">'+
-        '<span class="rdate">'+fmtDate(i.date)+'</span>'+
-        '<span class="rname">'+esc(i.title || "בלי תיאור")+
-          (i.desc ? ' <em>'+esc(i.desc)+'</em>' : "")+'</span>'+
-        '<span class="ramt">'+money(i.amount)+'</span>'+ pv +'</button>';
+      return '<div class="recrow '+i.type+'">'+
+        '<button class="recmain" data-open="'+i.id+'">'+
+          '<span class="rdate">'+fmtDate(i.date)+'</span>'+
+          '<span class="rname">'+esc(i.title || "בלי תיאור")+
+            (i.desc ? ' <em>'+esc(i.desc)+'</em>' : "")+'</span>'+
+          '<span class="ramt">'+money(i.amount)+'</span>'+ pv +
+        '</button>'+
+        '<button class="act" data-delrec="'+i.id+'" title="מחיקת הקבלה">✕</button>'+
+      '</div>';
     };
     const outs = withRec.filter(i=>i.type === "out");
     const ins  = withRec.filter(i=>i.type === "in");
@@ -1066,7 +1073,7 @@ function renderList(){
           '<button data-recside="out" aria-pressed="'+(recSide==="out")+'">הוצאות <b>'+outs.length+'</b></button>'+
           '<button data-recside="in" aria-pressed="'+(recSide==="in")+'">הכנסות <b>'+ins.length+'</b></button>'+
         '</div>'+
-        '<button class="ghost" id="recCsv">ייצוא הקבלות לגיליון</button>'+
+        '<button class="ghost" id="recCsv">ייצוא קבלות ה'+(recSide === "out" ? "הוצאות" : "הכנסות")+'</button>'+
       '</div>' +
       (shown.length
         ? '<div class="reclist">'+shown.map(card).join("")+'</div>'
@@ -1394,6 +1401,20 @@ function refreshBudFoot(){
 $("#listArea").addEventListener("click", e => {
   const side = e.target.closest("[data-recside]");
   if(side){ recSide = side.dataset.recside; renderList(); return; }
+  const delrec = e.target.closest("[data-delrec]");
+  if(delrec){
+    const it = db.items.find(x=>x.id === delrec.dataset.delrec);
+    if(!it) return;
+    ask({title:"למחוק את הקבלה?",
+         sub:"רק התמונה נמחקת. הרישום עצמו — " + (it.title || "ללא שם") + " על " +
+             money(it.amount) + " — יישאר במקומו.",
+         yes:"כן, למחוק את הקבלה"})
+      .then(ok=>{
+        if(!ok) return;
+        it.receipt = null; stamp(it); save(); renderAll(); toast("הקבלה נמחקה. הרישום נשאר.");
+      });
+    return;
+  }
   if(e.target.id === "recCsv"){ exportReceipts(); return; }
   if(e.target.id === "budAuto"){
     const prev = periodOf(-1);
@@ -1549,22 +1570,89 @@ $("#btnCsv").addEventListener("click", ()=>{
   toast("הקובץ ירד, עם היתרות בראש הדף.");
 });
 
-/* just the rows that have a receipt attached — the list an accountant asks for */
+/* ---- a zip built by hand, so the sheet and the photos travel together ---- */
+function crc32(buf){
+  let table = crc32.t;
+  if(!table){
+    table = crc32.t = new Uint32Array(256);
+    for(let n = 0; n < 256; n++){
+      let c = n;
+      for(let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      table[n] = c >>> 0;
+    }
+  }
+  let crc = 0xFFFFFFFF;
+  for(let i = 0; i < buf.length; i++) crc = (crc >>> 8) ^ table[(crc ^ buf[i]) & 0xFF];
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+function zipBlob(files){                       // [{name, data:Uint8Array}]
+  const enc = new TextEncoder(), parts = [], central = [];
+  let offset = 0;
+  files.forEach(f=>{
+    const name = enc.encode(f.name), crc = crc32(f.data), at = offset;
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true);
+    lh.setUint16(4, 20, true);
+    lh.setUint16(6, 0x0800, true);             // names are UTF-8
+    lh.setUint32(14, crc, true);
+    lh.setUint32(18, f.data.length, true);
+    lh.setUint32(22, f.data.length, true);
+    lh.setUint16(26, name.length, true);
+    parts.push(new Uint8Array(lh.buffer), name, f.data);
+    offset += 30 + name.length + f.data.length;
+
+    const cd = new DataView(new ArrayBuffer(46));
+    cd.setUint32(0, 0x02014b50, true);
+    cd.setUint16(4, 20, true); cd.setUint16(6, 20, true);
+    cd.setUint16(8, 0x0800, true);
+    cd.setUint32(16, crc, true);
+    cd.setUint32(20, f.data.length, true);
+    cd.setUint32(24, f.data.length, true);
+    cd.setUint16(28, name.length, true);
+    cd.setUint32(42, at, true);
+    central.push(new Uint8Array(cd.buffer), name);
+  });
+  const cdSize = central.reduce((s,c)=>s + c.length, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(8, files.length, true);
+  end.setUint16(10, files.length, true);
+  end.setUint32(12, cdSize, true);
+  end.setUint32(16, offset, true);
+  return new Blob(parts.concat(central, [new Uint8Array(end.buffer)]), {type:"application/zip"});
+}
+function dataUriBytes(uri){
+  const bin = atob(uri.slice(uri.indexOf(",") + 1));
+  const out = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+const safeName = s => String(s).replace(/[\\\/:*?"<>|]/g, "-").slice(0, 60).trim();
+
+/* the rows that have a receipt, plus the receipts themselves */
 function exportReceipts(){
   const p = periodOf(0);
-  const list = itemsOf(p).filter(i=>i.receipt).slice().reverse();
-  if(!list.length){ toast("אין קבלות בתקופה הזאת."); return; }
-  const rows = [["סוג","תאריך","לקוח / על מה","תיאור","קטגוריה","סכום","אמצעי תשלום","שם הקובץ"]];
+  const kind = recSide === "out" ? "הוצאות" : "הכנסות";
+  const list = itemsOf(p).filter(i=>i.receipt && i.type === recSide).slice().reverse();
+  if(!list.length){ toast("אין קבלות של " + kind + " בתקופה הזאת."); return; }
+
+  const files = [], used = {};
+  const rows = [["תאריך","על מה","קטגוריה","סכום","קובץ הקבלה"]];
   list.forEach(i=>{
-    rows.push([
-      i.type === "out" ? "הוצאה" : "הכנסה",
-      i.date, i.title || "", i.desc || "", i.cat || "",
-      i.amount, i.type === "in" ? PAY_TAG[payOf(i)] : "", i.receipt.name || ""
-    ]);
+    const ext = i.receipt.mime === "application/pdf" ? "pdf" : "jpg";
+    let base = i.date + " " + safeName(i.title || "קבלה");
+    if(used[base]) base += " (" + (++used[base]) + ")"; else used[base] = 1;
+    const fname = base + "." + ext;
+    files.push({name:"קבלות/" + fname, data:dataUriBytes(i.receipt.data)});
+    rows.push([i.date, i.title || "", i.cat || "", i.amount, fname]);
   });
-  const csv = "﻿" + rows.map(r => r.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\r\n");
-  download(new Blob([csv],{type:"text/csv;charset=utf-8"}), "קבלות-"+labelOf(p)+".csv");
-  toast("ירדו " + list.length + " שורות. אפשר לגרור את הקובץ לגוגל שיטס.");
+
+  const csv = "﻿" + rows.map(r => r.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(",")).join("\r\n");
+  files.unshift({name:"קבלות " + kind + " " + labelOf(p) + ".csv",
+                 data:new TextEncoder().encode(csv)});
+
+  download(zipBlob(files), "קבלות " + kind + " " + labelOf(p) + ".zip");
+  toast(list.length + " קבלות ירדו יחד עם הגיליון.");
 }
 
 /* One file that carries the app and the records together, so moving to another
