@@ -228,7 +228,7 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
 .row:hover{background:#FFF8FA}
 .row .when{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);width:48px;flex:none}
 .row .what{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}
-.row .wdesc{font-style:normal;color:var(--ink-2);font-size:13.5px}
+.row .wdesc{font-style:normal;color:var(--ink-2);font-size:13.5px;margin-inline-start:14px}
 .row .tag{font-size:12.5px;color:var(--ink-2);white-space:nowrap}
 .row .sum{font-family:var(--mono);font-weight:600;font-size:15px;white-space:nowrap}
 .row.out .sum{color:var(--out-deep)}
@@ -244,6 +244,15 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
 .empty{background:var(--white);border-radius:var(--r);padding:38px 24px;text-align:center;color:var(--ink-2)}
 .empty strong{display:block;font-family:var(--display);font-size:19px;color:var(--ink);margin-bottom:6px;font-weight:400}
 
+.soon{background:var(--white);border-radius:var(--r);padding:16px 20px 12px;margin-bottom:14px}
+.soon h4{font-family:var(--body);font-weight:700;font-size:14.5px;margin:0 0 10px;display:flex;align-items:baseline;gap:8px}
+.soon h4 b{font-family:var(--mono);font-size:14px;color:var(--in-deep)}
+.soonrow{display:flex;align-items:baseline;gap:12px;padding:6px 0;border-top:1px solid var(--line)}
+.sdate{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);width:48px;flex:none}
+.sname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.sname em{font-style:normal;font-size:12px;color:var(--ink-2);margin-inline-start:8px}
+.samt{font-family:var(--mono);font-size:14px;font-weight:600;white-space:nowrap;direction:ltr;unicode-bidi:isolate}
+.soonmore{margin:8px 0 0;font-size:12px;color:var(--ink-2)}
 .rechead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .recswitch{display:flex;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:3px}
 .recswitch button{border:0;background:none;color:var(--ink-2);padding:8px 18px;border-radius:999px;font-size:14px;font-weight:700}
@@ -440,6 +449,10 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
           <label for="fPay" id="lblPay">איך שולם</label>
           <select id="fPay"></select>
         </div>
+        <div class="f f-growon" id="wrapGrow" hidden>
+          <label>סליקה</label>
+          <label class="chkbox"><input type="checkbox" id="fGrow"><span>דרך גרואו</span></label>
+        </div>
         <div class="f f-instalon" id="wrapInstalOn" hidden>
           <label>תשלומים</label>
           <label class="chkbox"><input type="checkbox" id="fInstalOn"><span>חילקתי לתשלומים</span></label>
@@ -626,18 +639,29 @@ function itemsOf(p){
   return db.items.filter(i=>inPeriod(i,p)).sort((a,b)=> a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
 }
 
+/* Grow holds a charge and pays out on the 9th of the following month, so the
+   day a client is charged is not the day the money reaches the account. */
+function growPayout(d){
+  const [y,m] = d.split("-").map(Number);
+  return iso(new Date(y, m, 9));
+}
+
 /* When a client pays in instalments the deal is income the day it is signed,
    but the money lands month by month. These are the dates the cash arrives. */
 function cashEvents(i){
   const n = (i.pay === "instal" && i.instal) ? i.instal.n : 1;
-  if(n < 2) return [{date:i.date, amount:i.amount}];
-  const per = Math.round(i.amount / n * 100) / 100;
-  const out = [];
-  for(let k = 0; k < n; k++){
-    out.push({date: addMonths(i.date, k),
-              amount: k === n-1 ? Math.round((i.amount - per*(n-1))*100)/100 : per});
+  let charges;
+  if(n < 2) charges = [{date:i.date, amount:i.amount}];
+  else {
+    const per = Math.round(i.amount / n * 100) / 100;
+    charges = [];
+    for(let k = 0; k < n; k++){
+      charges.push({date: addMonths(i.date, k),
+                    amount: k === n-1 ? Math.round((i.amount - per*(n-1))*100)/100 : per});
+    }
   }
-  return out;
+  if(!i.grow) return charges;
+  return charges.map(c=>({date:growPayout(c.date), amount:c.amount, charged:c.date}));
 }
 function dateInPeriod(d, p){
   const [y,m] = d.split("-").map(Number);
@@ -828,10 +852,12 @@ function renderBars(){
   const upShare = maxDn ? Math.round(maxUp / (maxUp + maxDn) * 100) : 100;
   const dnShare = 100 - upShare;
 
-  const bar = (val, color, name, when) => {
+  // only the month she is standing on carries colour; its neighbours stay grey
+  const bar = (val, color, name, when, dim) => {
     const up = val >= 0;
     const h = up ? (maxUp ? val / maxUp * 100 : 0) : (maxDn ? -val / maxDn * 100 : 0);
     const tag = val ? '<span>' + money(Math.round(val)).replace("₪","") + '</span>' : "";
+    if(dim) color = "#D5CDD0";
     return '<div class="bcol" data-name="'+name+'" data-when="'+when+'" ' +
              'data-val="'+money(Math.round(val))+'" data-color="'+color+'">' +
       '<div class="bar-up" style="height:'+upShare+'%">' +
@@ -843,11 +869,11 @@ function renderBars(){
   };
 
   $("#bars").innerHTML = data.map((d,idx)=>{
-    const w = shortLabelOf(d.p);
+    const w = shortLabelOf(d.p), dim = idx !== 1;
     return '<div class="bgroup'+(idx===1?" now":"")+'">'+
       '<div class="bset">'+
-        bar(d.f.income,  C_IN,  "הכנסות", w) + bar(d.f.actual,  C_ACT, "נכנס בפועל", w) +
-        bar(d.f.expense, C_OUT, "הוצאות", w) + bar(d.f.profit, C_PRO, "רווח", w) +
+        bar(d.f.income,  C_IN,  "הכנסות", w, dim) + bar(d.f.actual,  C_ACT, "נכנס בפועל", w, dim) +
+        bar(d.f.expense, C_OUT, "הוצאות", w, dim) + bar(d.f.profit, C_PRO, "רווח", w, dim) +
       '</div>'+
       '<div class="blabel">'+w+'</div>'+
     '</div>';
@@ -1036,6 +1062,33 @@ function renderBudget(){
   area.innerHTML = '<div class="budcard">' + head + '<div>' + rows + '</div>' + foot + '</div>';
 }
 
+/* money already earned that has not reached the account yet, with the day it will */
+function comingSoonHtml(){
+  const today = iso(new Date()), soon = [];
+  db.items.filter(i=>i.type === "in").forEach(i=>{
+    const ev = cashEvents(i);
+    ev.forEach((e,k)=>{
+      if(e.date <= today) return;
+      soon.push({date:e.date, amount:e.amount, name:i.title || "בלי שם",
+                 part: ev.length > 1 ? "תשלום " + (k+1) + "/" + ev.length : "",
+                 charged: e.charged});
+    });
+  });
+  if(!soon.length) return "";
+  soon.sort((a,b)=> a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  const total = soon.reduce((s,r)=>s + r.amount, 0);
+  const shown = soon.slice(0, 12), rest = soon.length - shown.length;
+
+  return '<div class="soon"><h4>כסף בדרך <b>'+money(total)+'</b></h4>' +
+    shown.map(r=>{
+      const notes = [r.part, r.charged ? "נגבה " + fmtDate(r.charged) : ""].filter(Boolean).join(" · ");
+      return '<div class="soonrow"><span class="sdate">'+fmtDate(r.date)+'</span>'+
+        '<span class="sname">'+esc(r.name)+(notes ? ' <em>'+notes+'</em>' : "")+'</span>'+
+        '<span class="samt">'+money(r.amount)+'</span></div>';
+    }).join("") +
+    (rest ? '<p class="soonmore">ועוד '+rest+' תשלומים</p>' : "") + '</div>';
+}
+
 function renderList(){
   const area = $("#listArea");
   const items = itemsOf(periodOf(0));
@@ -1086,14 +1139,15 @@ function renderList(){
     return;
   }
 
+  const soon = tab === "in" ? comingSoonHtml() : "";
   const rows = items.filter(i=>i.type===tab);
   if(!rows.length){
-    area.innerHTML = tab === "out"
-      ? '<div class="empty"><strong>אין הוצאות בתקופה הזאת</strong>ההוצאה הראשונה נכנסת מהטופס למעלה.</div>'
-      : '<div class="empty"><strong>אין הכנסות בתקופה הזאת</strong>ההכנסה הראשונה נכנסת מהכפתור למעלה.</div>';
+    area.innerHTML = soon + (tab === "out"
+      ? '<div class="empty"><strong>אין הוצאות בתקופה הזאת</strong>ההוצאה הראשונה נכנסת מהכפתור למעלה.</div>'
+      : '<div class="empty"><strong>אין הכנסות בתקופה הזאת</strong>ההכנסה הראשונה נכנסת מהכפתור למעלה.</div>');
     return;
   }
-  area.innerHTML = '<div class="rows">' + rows.map(i=>{
+  area.innerHTML = soon + '<div class="rows">' + rows.map(i=>{
     const thumb = i.receipt
       ? '<button class="thumb" data-open="'+i.id+'" title="פתיחת הקבלה">'+
         (i.receipt.mime.startsWith("image/") ? '<img src="'+i.receipt.data+'" alt="קבלה">' : 'PDF')+'</button>'
@@ -1129,6 +1183,7 @@ function setTab(t){
     $("#addForm").className = t === "out" ? "is-out" : "is-in";
     $("#wrapCat").hidden = t !== "out";
     $("#wrapPay").hidden = t !== "in";         // an expense is simply money out
+    $("#wrapGrow").hidden = t !== "in";
     $("#wrapInstalOn").hidden = t !== "out";
     $("#lblTitle").textContent = t === "out" ? "על מה" : "לקוח";
     $("#fTitle").placeholder = t === "out" ? "למשל: חומרי גלם" : "למשל: דפנה כהן";
@@ -1159,11 +1214,21 @@ $("#btnNew").addEventListener("click", ()=>{
 $("#sheetClose").addEventListener("click", ()=>{ resetForm(); closeForm(); });
 $("#sheet").addEventListener("click", e => { if(e.target.id === "sheet"){ resetForm(); closeForm(); } });
 
+/* a new record belongs to the month she is looking at, not to today */
+function defaultDate(){
+  const now = new Date(), p = periodOf(0);
+  if(p.scope === "year") return p.y === now.getFullYear() ? iso(now) : p.y + "-01-01";
+  return (p.y === now.getFullYear() && p.m === now.getMonth())
+    ? iso(now)
+    : iso(new Date(p.y, p.m, 1));
+}
+
 function resetForm(){
   editing = null; pendingFile = null;
   $("#addForm").reset();
-  $("#fDate").value = iso(new Date());
+  $("#fDate").value = defaultDate();
   $("#fPay").value = "bank";
+  $("#fGrow").checked = false;
   $("#fInstalOn").checked = false;
   $("#fInstal").value = 3;
   $("#fileName").textContent = "צירוף קבלה";
@@ -1204,7 +1269,7 @@ function startEdit(id){
   $("#fTitle").value = it.title || "";
   $("#fAmount").value = it.amount;
   if(it.type==="out") $("#fCat").value = it.cat || CATS[0];
-  else $("#fPay").value = payOf(it);
+  else { $("#fPay").value = payOf(it); $("#fGrow").checked = !!it.grow; }
   $("#fDesc").value = it.desc || "";
   if(it.instal) $("#fInstal").value = it.instal.n;
   pendingFile = it.receipt || null;
@@ -1238,7 +1303,7 @@ $("#addForm").addEventListener("submit", e => {
     receipt: pendingFile
   };
   if(tab === "out") rec.cat = $("#fCat").value;
-  else rec.pay = $("#fPay").value;
+  else { rec.pay = $("#fPay").value; if($("#fGrow").checked) rec.grow = true; }
   const note = $("#fDesc").value.trim();
   if(note) rec.desc = note;
 
@@ -1861,7 +1926,7 @@ function seedDemo(){
       paid:"התקבל בהעברה בנקאית", when:dt(.9), code:code()})});
 
   items.push({id:uid(), type:"in", date:day(1), title:"דפנה כהן", desc:"חבילת 4 טיפולים", amount:1400,
-              pay:"instal", instal:{n:4}});
+              pay:"instal", instal:{n:4}, grow:true});
 
   // a lighter previous month, so the three-month chart has something to compare
   const p = new Date(Y, M-1, 1), PY = p.getFullYear(), PM = p.getMonth();
@@ -2114,7 +2179,7 @@ if(seedEl){
 
 $("#fCat").innerHTML = CATS.map(c=>'<option>'+c+'</option>').join("");
 $("#bizName").textContent = db.name || "העסק שלי";
-$("#fDate").value = iso(new Date());
+$("#fDate").value = defaultDate();
 setTab("out");
 renderAll();
 
