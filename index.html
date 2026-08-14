@@ -462,10 +462,6 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
           <label for="fPay" id="lblPay">איך שולם</label>
           <select id="fPay"></select>
         </div>
-        <div class="f f-refund" id="wrapRefund" hidden>
-          <label>החזר</label>
-          <label class="chkbox"><input type="checkbox" id="fRefund"><span>קיבלתי כסף בחזרה</span></label>
-        </div>
         <div class="f f-instalon" id="wrapInstalOn" hidden>
           <label>תשלומים</label>
           <label class="chkbox"><input type="checkbox" id="fInstalOn"><span>חילקתי לתשלומים</span></label>
@@ -1223,7 +1219,6 @@ function setTab(t){
     $("#wrapCat").hidden = t !== "out";
     $("#wrapPay").hidden = t !== "in";         // an expense is simply money out
     $("#wrapInstalOn").hidden = t !== "out";
-    $("#wrapRefund").hidden = t !== "out";
     $("#lblTitle").textContent = t === "out" ? "על מה" : "לקוח";
     $("#fTitle").placeholder = t === "out" ? "למשל: חומרי גלם" : "למשל: דפנה כהן";
     $("#lblDesc").textContent = t === "out" ? "הערות" : "תיאור";
@@ -1268,7 +1263,6 @@ function resetForm(){
   $("#fDate").value = defaultDate();
   $("#fPay").value = "bank";
   $("#fInstalOn").checked = false;
-  $("#fRefund").checked = false;
   $("#fInstal").value = 3;
   $("#fileName").textContent = "צירוף קבלה";
   $("#fileLabel").classList.remove("has");
@@ -1319,8 +1313,7 @@ function startEdit(id){
   editing = id;
   $("#fDate").value = it.date;
   $("#fTitle").value = it.title || "";
-  $("#fAmount").value = Math.abs(it.amount);
-  $("#fRefund").checked = it.type === "out" && it.amount < 0;
+  $("#fAmount").value = it.amount;
   if(it.type==="out") $("#fCat").value = it.cat || CATS[0];
   else $("#fPay").value = payOf(it);
   $("#fDesc").value = it.desc || "";
@@ -1345,11 +1338,10 @@ function addMonths(dateStr, k){
 
 $("#addForm").addEventListener("submit", e => {
   e.preventDefault();
+  // a minus in the amount makes it a refund: money that came back
   let amount = parseFloat(String($("#fAmount").value).replace(/[^\d.-]/g,""));
   if(!isFinite(amount) || amount === 0){ toast("צריך סכום."); $("#fAmount").focus(); return; }
-  // a refund is an expense that came back: the same row with a minus in front
-  if(tab === "out" && $("#fRefund").checked) amount = -Math.abs(amount);
-  if(tab === "in" && amount < 0) amount = Math.abs(amount);
+  if(tab === "in") amount = Math.abs(amount);
   const rec = {
     id: editing || uid(),
     type: tab,
