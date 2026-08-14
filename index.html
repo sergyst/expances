@@ -213,6 +213,9 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
 .f input,.f select{font-family:var(--body);font-size:15px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--white);color:var(--ink);min-width:0}
 .f input[type=date]{font-family:var(--mono);font-size:13.5px}
 .f-date{width:150px}.f-title{flex:1 1 170px}.f-amt{width:124px}.f-pay{width:150px}.f-instalon{width:auto}
+.f-fee{width:132px}
+.f-fee input{font-family:var(--mono);font-weight:600}
+#fAmount[readonly]{background:var(--paper);color:var(--ink-2)}
 /* category and notes share one line; on an income there is no category, so notes take it all */
 #addForm.is-out .f-cat{width:calc(40% - 5px)}
 #addForm.is-out .f-desc{width:calc(60% - 5px)}
@@ -465,6 +468,14 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
         <div class="f f-pay" id="wrapPay">
           <label for="fPay" id="lblPay">איך שולם</label>
           <select id="fPay"></select>
+        </div>
+        <div class="f f-fee" id="wrapFeeCard" hidden>
+          <label for="fFeeCard">עמלות אשראי</label>
+          <input type="text" id="fFeeCard" inputmode="decimal" placeholder="0">
+        </div>
+        <div class="f f-fee" id="wrapFeeVat" hidden>
+          <label for="fFeeVat">מע״מ</label>
+          <input type="text" id="fFeeVat" inputmode="decimal" placeholder="0">
         </div>
         <div class="f f-instalon" id="wrapInstalOn" hidden>
           <label>תשלומים</label>
@@ -1208,7 +1219,10 @@ function renderList(){
       ? '<button class="thumb" data-open="'+i.id+'" title="פתיחת הקבלה">'+
         (i.receipt.mime.startsWith("image/") ? '<img src="'+i.receipt.data+'" alt="קבלה">' : 'PDF')+'</button>'
       : '<span class="noreceipt"></span>';
-    const tag = i.type === "out" ? '<span class="tag">'+esc(i.cat || CATS[0])+'</span>' : "";
+    const tag = i.type === "out"
+      ? '<span class="tag">'+esc(i.cat || CATS[0])+'</span>' +
+        (i.fee ? '<span class="tag">אשראי '+money(i.fee.card)+' · מע״מ '+money(i.fee.vat)+'</span>' : "")
+      : "";
     const p = payOf(i);
     const paytag = i.type === "out" ? ""
       : (p === "instal" && i.instal && i.instal.n > 1)
@@ -1240,6 +1254,7 @@ function setTab(t){
     $("#btnNew").textContent = t === "out" ? "+ הוצאה חדשה" : "+ הכנסה חדשה";
     $("#btnNew").classList.toggle("in", t === "in");
     $("#addForm").className = t === "out" ? "is-out" : "is-in";
+    syncFee();
     $("#wrapCat").hidden = t !== "out";
     $("#wrapPay").hidden = t !== "in";         // an expense is simply money out
     $("#wrapInstalOn").hidden = t !== "out";
@@ -1288,6 +1303,8 @@ function resetForm(){
   $("#fPay").value = "bank";
   $("#fInstalOn").checked = false;
   $("#fInstal").value = 3;
+  $("#fFeeCard").value = ""; $("#fFeeVat").value = "";
+  syncFee();
   $("#fileName").textContent = "צירוף קבלה";
   $("#fileLabel").classList.remove("has");
   $("#saveBtn").textContent = "הוספה";
@@ -1328,6 +1345,23 @@ function syncInstal(){
         : "ההכנסה תירשם במלואה בתאריך שבחרת. הכסף ייכנס ב־<b>"+n+"</b> תשלומים של <b>"+per+"</b>, " +
           "ב־9 בחודש שאחרי כל חיוב:<br><span class='dates'>"+when+"</span>");
 }
+/* What Grow withholds is the credit fee and the VAT on it, taken together —
+   so the two are entered separately and the amount is their sum. */
+function syncFee(){
+  const on = tab === "out" && $("#fCat").value === FEE_CAT;
+  $("#wrapFeeCard").hidden = !on;
+  $("#wrapFeeVat").hidden = !on;
+  const amt = $("#fAmount");
+  amt.readOnly = on;
+  if(!on) return;
+  const num = el => { const n = parseFloat(String($(el).value).replace(/[^\d.-]/g,"")); return isFinite(n) ? n : 0; };
+  const total = Math.round((num("#fFeeCard") + num("#fFeeVat")) * 100) / 100;
+  amt.value = total || "";
+}
+$("#fCat").addEventListener("change", syncFee);
+$("#fFeeCard").addEventListener("input", syncFee);
+$("#fFeeVat").addEventListener("input", syncFee);
+
 $("#fPay").addEventListener("change", syncInstal);
 $("#fInstalOn").addEventListener("change", syncInstal);
 $("#fInstal").addEventListener("input", syncInstal);
@@ -1342,7 +1376,11 @@ function startEdit(id){
   $("#fDate").value = it.date;
   $("#fTitle").value = it.title || "";
   $("#fAmount").value = it.amount;
-  if(it.type==="out") $("#fCat").value = it.cat || CATS[0];
+  if(it.type==="out"){
+    $("#fCat").value = it.cat || CATS[0];
+    if(it.fee){ $("#fFeeCard").value = it.fee.card || ""; $("#fFeeVat").value = it.fee.vat || ""; }
+    syncFee();
+  }
   else $("#fPay").value = payOf(it);
   $("#fDesc").value = it.desc || "";
   if(it.instal) $("#fInstal").value = it.instal.n;
@@ -1378,7 +1416,14 @@ $("#addForm").addEventListener("submit", e => {
     amount: amount,
     receipt: pendingFile
   };
-  if(tab === "out") rec.cat = $("#fCat").value;
+  if(tab === "out"){
+    rec.cat = $("#fCat").value;
+    if(rec.cat === FEE_CAT){
+      const num = el => { const n = parseFloat(String($(el).value).replace(/[^\d.-]/g,"")); return isFinite(n) ? n : 0; };
+      const card = num("#fFeeCard"), vat = num("#fFeeVat");
+      if(card || vat) rec.fee = {card:card, vat:vat};
+    }
+  }
   else rec.pay = $("#fPay").value;
   const note = $("#fDesc").value.trim();
   if(note) rec.desc = note;
