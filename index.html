@@ -549,8 +549,10 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
 
 /* ---------------- data ---------------- */
 const KEY = "esek.v1";
-const CATS = ["שיווק","תוכנות","נסיעות","קורסים","ציוד","ספקים","עמלות ומיסים"];
-const FEE_CAT = "עמלות ומיסים";   // what a payment processor takes off a transfer
+const CATS = ["שיווק","תוכנות","נסיעות","קורסים","ציוד","ספקים","עמלות סליקה","עמלות ומיסים"];
+/* Only what the processor takes out of the transfer itself belongs here — bank
+   charges and tax leave the account separately and stay in עמלות ומיסים. */
+const FEE_CAT = "עמלות סליקה";
 const MONTHS = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
 const PAY_IN  = [["bank","העברה בנקאית"],["card","אשראי"],["bit","ביט / פייבוקס"],["cash","מזומן"],["instal","תשלומים (גרואו)"]];
 const PAY_OUT = [["bank","העברה בנקאית"],["card","אשראי"],["cash","מזומן"],["instal","תשלומים"]];
@@ -1131,7 +1133,7 @@ function cashPanelHtml(){
   const gross = sum(cashSide);
   const foot = (fees > 0 && rows.length)
     ? '<div class="soonfoot">' +
-        '<div class="soonrow"><span class="sname">עמלות שנרשמו ב'+labelOf(shownPeriod)+'</span>' +
+        '<div class="soonrow"><span class="sname">עמלות סליקה שנרשמו ב'+labelOf(shownPeriod)+'</span>' +
           '<span class="samt minus">'+money(-fees)+'</span></div>' +
         '<div class="soonrow net"><span class="sname">נטו לחשבון</span>' +
           '<span class="samt">'+money(gross - fees)+'</span></div>' +
