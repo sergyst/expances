@@ -1,0 +1,15 @@
+{
+  "name": "הכספים של העסק",
+  "short_name": "הכספים",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "./",
+  "display": "browser",
+  "background_color": "#FFF2F5",
+  "theme_color": "#FFF2F5",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
