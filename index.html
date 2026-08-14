@@ -468,7 +468,7 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
         </div>
         <div class="f f-instal" id="wrapInstal" hidden>
           <label for="fInstal">כמה תשלומים</label>
-          <input type="number" id="fInstal" min="2" max="36" step="1" value="3">
+          <input type="number" id="fInstal" min="1" max="36" step="1" value="3">
         </div>
         <div class="f f-amt">
           <label for="fAmount">סכום ₪</label>
@@ -1089,7 +1089,8 @@ function arrivalsIn(p){
     ev.forEach((e,k)=>{
       if(!dateInPeriod(e.date, p)) return;
       out.push({date:e.date, amount:e.amount, name:i.title || "בלי שם",
-                part: ev.length > 1 ? "תשלום " + (k+1) + "/" + ev.length : PAY_TAG[payOf(i)],
+                part: ev.length > 1 ? "תשלום " + (k+1) + "/" + ev.length
+                    : viaGrow(i) ? "גרואו" : PAY_TAG[payOf(i)],
                 charged: e.charged});
     });
   });
@@ -1187,9 +1188,9 @@ function renderList(){
     const tag = i.type === "out" ? '<span class="tag">'+esc(i.cat || CATS[0])+'</span>' : "";
     const p = payOf(i);
     const paytag = i.type === "out" ? ""
-      : (p === "instal" && i.instal)
+      : (p === "instal" && i.instal && i.instal.n > 1)
         ? '<span class="tag">'+i.instal.n+' × '+money(Math.round(i.amount/i.instal.n*100)/100)+'</span>'
-        : '<span class="tag">'+PAY_TAG[p]+'</span>';
+        : '<span class="tag">'+(p === "instal" ? "גרואו" : PAY_TAG[p])+'</span>';
     // an expense that came back reads like money in, not money out
     const back = i.type === "out" && i.amount < 0;
     return '<div class="row '+(back ? "in" : i.type)+'">'+
@@ -1277,7 +1278,7 @@ function syncInstal(){
   const note = $("#instalNote");
   if(!on){ note.hidden = true; return; }
   const total = parseFloat(String($("#fAmount").value).replace(/[^\d.]/g,""));
-  const n = Math.min(36, Math.max(2, parseInt($("#fInstal").value || "2", 10)));
+  const n = Math.min(36, Math.max(1, parseInt($("#fInstal").value || "1", 10)));
   note.hidden = false;
   if(!isFinite(total) || total <= 0){
     note.innerHTML = "רשמי את הסכום <b>הכולל</b> של העסקה ואני אחלק אותו לתשלומים חודשיים.";
@@ -1296,9 +1297,13 @@ function syncInstal(){
   const when = dates.join(" · ") + (n > 4 ? " · ועוד " + (n-4) : "");
 
   note.innerHTML = tab === "out"
-    ? "יירשמו <b>"+n+"</b> תשלומים של <b>"+per+"</b>, חודש אחרי חודש:<br><span class='dates'>"+when+"</span>"
-    : "ההכנסה תירשם במלואה בתאריך שבחרת. הכסף ייכנס ב־<b>"+n+"</b> תשלומים של <b>"+per+"</b>, " +
-      "ב־9 בחודש שאחרי כל חיוב:<br><span class='dates'>"+when+"</span>";
+    ? (n < 2
+        ? "תשלום אחד — יירשם כהוצאה רגילה בתאריך שבחרת."
+        : "יירשמו <b>"+n+"</b> תשלומים של <b>"+per+"</b>, חודש אחרי חודש:<br><span class='dates'>"+when+"</span>")
+    : (n < 2
+        ? "ההכנסה תירשם בתאריך שבחרת, והכסף ייכנס ב־9 בחודש שאחרי החיוב:<br><span class='dates'>"+when+"</span>"
+        : "ההכנסה תירשם במלואה בתאריך שבחרת. הכסף ייכנס ב־<b>"+n+"</b> תשלומים של <b>"+per+"</b>, " +
+          "ב־9 בחודש שאחרי כל חיוב:<br><span class='dates'>"+when+"</span>");
 }
 $("#fPay").addEventListener("change", syncInstal);
 $("#fInstalOn").addEventListener("change", syncInstal);
@@ -1366,14 +1371,15 @@ $("#addForm").addEventListener("submit", e => {
       db.demo = false; db.opening = 0;
       clearedDemo = true;
     }
+    const parts = Math.min(36, Math.max(1, parseInt($("#fInstal").value || "1", 10)));
     if(tab === "in" && rec.pay === "instal"){
       // one deal, one row — only the cash arrives in pieces
-      rec.instal = {n: Math.min(36, Math.max(2, parseInt($("#fInstal").value || "2", 10)))};
+      rec.instal = {n: parts};
       db.items.push(rec);
-      spread = -rec.instal.n;
-    } else if(tab === "out" && $("#fInstalOn").checked){
+      spread = parts > 1 ? -parts : 0;
+    } else if(tab === "out" && $("#fInstalOn").checked && parts > 1){
       // one purchase, one row per monthly payment, carried forward automatically
-      const n = Math.min(36, Math.max(2, parseInt($("#fInstal").value || "2", 10)));
+      const n = parts;
       const per = Math.round(amount / n * 100) / 100;
       const group = uid();
       for(let k = 0; k < n; k++){
