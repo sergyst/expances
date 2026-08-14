@@ -320,6 +320,10 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
 .tip-r .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tip-r .e{flex:none;font-size:11px;opacity:.6}
 .tip-r .v{flex:none;font-family:var(--mono);font-size:12.5px}
+.fresh{position:fixed;inset-inline:0;bottom:20px;margin:auto;width:max-content;max-width:92%;display:flex;align-items:center;gap:12px;background:var(--in-deep);color:#fff;padding:11px 14px 11px 20px;border-radius:999px;font-size:14.5px;z-index:70;box-shadow:0 8px 26px rgba(46,42,44,.22)}
+.fresh[hidden]{display:none!important}
+.fresh button{border:0;background:#ffffff2e;color:#fff;padding:7px 16px;border-radius:999px;font-size:13.5px;font-weight:700;font-family:inherit}
+.fresh button:hover{background:#ffffff45}
 .toast{position:fixed;inset-inline:0;bottom:24px;margin:auto;width:max-content;max-width:90%;background:var(--ink);color:#fff;padding:12px 22px;border-radius:999px;font-size:14.5px;opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none;z-index:60}
 .toast.on{opacity:1;transform:none}
 
@@ -522,6 +526,11 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
 </div>
 
 <div class="tip" id="tip" hidden></div>
+<div class="fresh" id="fresh" hidden>
+  <span>יש גרסה חדשה של האפליקציה</span>
+  <button type="button" id="freshGo">רענון</button>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -2197,6 +2206,29 @@ if(seedEl){
     }
   }catch(e){}
 }
+
+/* The browser can hold an old copy of this page for a long time. Rather than
+   asking her to notice, ask the server whether the file has changed since the
+   copy she is looking at, and offer one button that fetches the new one. */
+function watchForUpdate(){
+  if(!location.protocol.startsWith("http")) return;
+  const mine = Date.parse(document.lastModified);
+  const check = () => fetch(location.pathname + "?fresh=" + Date.now(), {method:"HEAD", cache:"no-store"})
+    .then(r=>{
+      const served = Date.parse(r.headers.get("last-modified") || "");
+      if(isFinite(mine) && isFinite(served) && served > mine + 60000){
+        $("#fresh").hidden = false;
+      }
+    })
+    .catch(()=>{});
+  check();
+  setInterval(check, 10 * 60 * 1000);
+  window.addEventListener("focus", check);
+}
+$("#freshGo").addEventListener("click", ()=>{
+  location.replace(location.pathname + "?v=" + Date.now());
+});
+watchForUpdate();
 
 // the file's own timestamp: if she is looking at a stale cached copy, this says so
 (function(){
