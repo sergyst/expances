@@ -200,6 +200,7 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
 .f-instal{width:126px}
 .instal-note{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-2)}
 .instal-note b{font-family:var(--mono);color:var(--ink)}
+.instal-note .dates{display:inline-block;margin-top:6px;font-family:var(--mono);font-size:13px;color:var(--in-deep);font-weight:600}
 .form{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
 .f{display:flex;flex-direction:column;gap:5px}
 .f label{font-size:12px;font-weight:700;color:var(--ink-2)}
@@ -1264,15 +1265,27 @@ function syncInstal(){
     return;
   }
   const per = money(Math.round(total/n*100)/100);
+  const from = $("#fDate").value || iso(new Date());
+
+  // spell out the actual dates, so a wrong number of payments is obvious here
+  // rather than a month later in the cash panel
+  const dates = [];
+  for(let k = 0; k < Math.min(n, 4); k++){
+    const charge = addMonths(from, k);
+    dates.push(fmtDate(tab === "out" ? charge : growPayout(charge)));
+  }
+  const when = dates.join(" · ") + (n > 4 ? " · ועוד " + (n-4) : "");
+
   note.innerHTML = tab === "out"
-    ? "יירשמו <b>"+n+"</b> תשלומים של <b>"+per+"</b>, חודש אחרי חודש, החל מהתאריך שבחרת."
+    ? "יירשמו <b>"+n+"</b> תשלומים של <b>"+per+"</b>, חודש אחרי חודש:<br><span class='dates'>"+when+"</span>"
     : "ההכנסה תירשם במלואה בתאריך שבחרת. הכסף ייכנס ב־<b>"+n+"</b> תשלומים של <b>"+per+"</b>, " +
-      "כל אחד ב־9 בחודש שאחרי החיוב — כמו שגרואו משלם.";
+      "ב־9 בחודש שאחרי כל חיוב:<br><span class='dates'>"+when+"</span>";
 }
 $("#fPay").addEventListener("change", syncInstal);
 $("#fInstalOn").addEventListener("change", syncInstal);
 $("#fInstal").addEventListener("input", syncInstal);
 $("#fAmount").addEventListener("input", syncInstal);
+$("#fDate").addEventListener("change", syncInstal);
 
 function startEdit(id){
   const it = db.items.find(x=>x.id===id);
